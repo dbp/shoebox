@@ -19,11 +19,10 @@ data FileStore = FileStore Text
 
 instance BlobServer FileStore where
  writeBlob (FileStore dir) dat = do
-  let digest = SHA1.hash dat
-  let chars = T.decodeUtf8 $ BL.toStrict $ Builder.toLazyByteString $ Builder.byteStringHex digest
-  let filename = T.unpack $ dir <> "/sha1/" <> T.take 2 chars <> "/" <> T.take 2 (T.drop 2 chars) <> "/sha1-" <> chars <> ".dat"
-  BS.writeFile filename dat
-  return (SHA1 $ "sha1-" <> chars)
+   (SHA1 name) <- getBlobName dat
+   let filename = T.unpack $ dir <> "/sha1/" <> T.take 2 (T.drop 4 name) <> "/" <> T.take 2 (T.drop 6 name) <> "/" <> name <> ".dat"
+   BS.writeFile filename dat
+   return (SHA1 name)
 
  readBlob (FileStore dir) (SHA1 t) = if not ("sha1-" `T.isPrefixOf` t) then error $ T.unpack $ "SHA1 does not start with 'sha1-': " <> t else
   do let filename = dir <> "/sha1/" <> (T.take 2 (T.drop 4 t)) <> "/" <> (T.take 2 (T.drop 6 t)) <> "/" <> t <> ".dat"
