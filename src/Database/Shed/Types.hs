@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Database.Shed.Types where
 
-import Data.Text (Text)
+import           Data.Text (Text)
 import qualified Data.Text as T
 
 newtype SHA1 = SHA1 { unSHA1 :: Text }

@@ -1,15 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Database.Shed.BlobServer where
 
-import Data.Monoid
-import qualified Data.ByteString.Lazy as BL
-import qualified Data.ByteString as BS
-import Data.ByteString (ByteString)
+import qualified Crypto.Hash.SHA1        as SHA1
+import           Data.ByteString         (ByteString)
+import qualified Data.ByteString         as BS
 import qualified Data.ByteString.Builder as Builder
-import qualified Crypto.Hash.SHA1 as SHA1
-import qualified Data.Text.Encoding as T
+import qualified Data.ByteString.Lazy    as BL
+import           Data.Monoid
+import qualified Data.Text.Encoding      as T
 
-import Database.Shed.Types
+import           Database.Shed.Types
 
 getBlobName :: ByteString -> IO SHA1
 getBlobName dat = do
