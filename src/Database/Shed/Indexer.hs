@@ -9,6 +9,7 @@ import           Data.Aeson.Types
 import           Data.ByteString                      (ByteString)
 import qualified Data.ByteString.Lazy                 as BL
 import qualified Data.Map                             as M
+import           Data.Monoid                          ((<>))
 import           Data.Text                            (Text)
 import           Database.PostgreSQL.Simple
 import           Database.PostgreSQL.Simple.FromField
@@ -84,7 +85,9 @@ instance FromJSON Blob where
 index :: BlobServer a => a -> IO ()
 index a = do
   conn <- connectPostgreSQL "dbname=shed"
+  putStrLn ""
   enumerateBlobs a $ \sha dat -> do
+    putStr $ "\r" <> show sha
     let blob = case decode dat of
                  Nothing -> Bytes dat
                  Just b  -> b
@@ -96,6 +99,7 @@ index a = do
              FileBlob _ _ ->
                execute conn "UPDATE permanodes SET show_in_ui = true WHERE attributes->'camliContent' = ?" (Only (String (unSHA1 sha)))
              Bytes _ -> return 0
+  putStrLn "\rDONE                                            "
 
 wipe :: IO ()
 wipe = do

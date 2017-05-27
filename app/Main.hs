@@ -4,13 +4,16 @@ module Main where
 
 import           Control.Logging                    (log', withStderrLogging)
 import           Data.Aeson
+import           Data.Binary.Builder                (Builder)
 import qualified Data.Binary.Builder                as Builder
 import           Data.ByteString                    (ByteString)
+import qualified Data.ByteString.Lazy               as BL
 import           Data.Map                           (Map)
 import qualified Data.Map                           as M
 import           Data.Maybe                         (catMaybes, fromMaybe)
 import           Data.Monoid                        ((<>))
 import qualified Data.Text                          as T
+import qualified Data.Text.Encoding                 as T
 import           Database.PostgreSQL.Simple         (Connection, Only (..),
                                                      connectPostgreSQL, query_)
 import           Network.HTTP.Types                 (hContentType)
@@ -24,6 +27,7 @@ import           Web.Fn
 
 import           Database.Shed.BlobServer
 import           Database.Shed.BlobServer.Directory
+import           Database.Shed.Images
 import           Database.Shed.Indexer
 import           Database.Shed.Types
 
@@ -37,14 +41,15 @@ instance RequestContext Ctxt where
 
 initializer :: IO Ctxt
 initializer = do
-  conn <- connectPostgreSQL "dbname='shed'"
+  db <- T.pack . fromMaybe "shed" <$> lookupEnv "INDEX"
+  conn <- connectPostgreSQL $ T.encodeUtf8 $ "dbname='" <> db <> "'"
   pth <- T.pack . fromMaybe "." <$> (lookupEnv "BLOBS")
+  log' $ "Opening up the shed (" <> pth <> " & " <> db <> ")..."
   return (Ctxt defaultFnRequest (FileStore pth) conn)
 
 main :: IO ()
 main = withStderrLogging $
   do ctxt <- initializer
-     log' "Opening up the shed..."
      runEnv 3000 $ toWAI ctxt site
 
 instance FromParam SHA1 where
@@ -54,20 +59,31 @@ instance FromParam SHA1 where
 
 site :: Ctxt -> IO Response
 site ctxt = route ctxt [ end                   ==> indexH
+                       , segment // path "thumb" ==> thumbH
                        , segment ==> smartBlobH
                        , path "raw" // segment ==> blobH
                        ]
                   `fallthrough` notFoundText "Page not found."
 
+readFileBytes :: Ctxt -> [Part] -> IO Builder
+readFileBytes ctxt ps =
+  do bs <- catMaybes <$> mapM (\(Part sha _) ->
+                                  readBlob (_store ctxt) sha) ps
+     return $ foldl (\builder st ->
+               Builder.append builder
+               (Builder.fromLazyByteString st))
+       Builder.empty
+       bs
+
 indexH :: Ctxt -> IO (Maybe Response)
 indexH ctxt = do
-  rs <- query_ (_db ctxt) "SELECT attributes->>'camliContent' as sha1 FROM permanodes WHERE show_in_ui = true"
+  rs <- query_ (_db ctxt) "SELECT attributes->>'camliContent' as sha1 FROM permanodes WHERE show_in_ui = true LIMIT 10"
   fs <- catMaybes <$> mapM (\(Only sha) ->
                               (fmap (sha, )) <$> ((>>= decode) <$> readBlob (_store ctxt) sha))
                            rs
   okHtml $ "<doctype !html><html><body><ul>" <> T.concat (map render fs) <> "</ul></body></html>"
   where render (SHA1 sha, FileBlob name _) =
-          "<li><a href='/" <> sha <> "'>" <> name <> "</a></li>"
+          "<li><a href='/" <> sha <> "'><img src='" <> sha <> "/thumb'/>" <> name <> "</a></li>"
         render _ = "<li>Not a file</li>"
 
 blobH :: Ctxt -> SHA1 -> IO (Maybe Response)
@@ -141,6 +157,26 @@ mimeMap =  M.fromList [
   ( ".xwd"     , "image/x-xwindowdump"               ),
   ( ".zip"     , "application/zip"                   ) ]
 
+renderIcon :: IO (Maybe Response)
+renderIcon = sendFile "static/icon.png"
+
+thumbH :: Ctxt -> SHA1 -> IO (Maybe Response)
+thumbH ctxt sha@(SHA1 s) =
+  do log' $ "Thumbnail of " <> s
+     res' <- readBlob' (_store ctxt) sha
+     case res' of
+       Nothing  -> return Nothing
+       Just (Bytes bs) -> renderIcon
+       Just (FileBlob name ps) -> do
+         let content = maybe [] (\c -> [(hContentType, c)]) $ M.lookup (takeExtension $ T.unpack name) mimeMap
+         builder <- readFileBytes ctxt ps
+         let dat = BL.toStrict $ Builder.toLazyByteString builder
+         res <- getExifThumbnail dat
+         case res of
+           Nothing -> renderIcon
+           Just jpg ->
+             return $ Just $ responseBuilder status200 [(hContentType, "image/jpeg")] (Builder.fromByteString jpg)
+
 
 smartBlobH :: Ctxt -> SHA1 -> IO (Maybe Response)
 smartBlobH ctxt sha@(SHA1 s) =
@@ -151,11 +187,5 @@ smartBlobH ctxt sha@(SHA1 s) =
        Just (Bytes bs) -> return $ Just $ responseLBS status200 [] bs
        Just (FileBlob name ps) -> do
          let content = maybe [] (\c -> [(hContentType, c)]) $ M.lookup (takeExtension $ T.unpack name) mimeMap
-         bs <- catMaybes <$> mapM (\(Part sha _) ->
-                                     readBlob (_store ctxt) sha) ps
-         let builder = foldl (\builder st ->
-                                Builder.append builder
-                                (Builder.fromLazyByteString st))
-                       Builder.empty
-                       bs
+         builder <- readFileBytes ctxt ps
          return $ Just $ responseBuilder status200 content builder
