@@ -41,7 +41,7 @@ data Part = Part SHA1 Int deriving Show
 data Blob = Bytes BL.ByteString
           | PermanodeBlob
           | SetAttribute SHA1 Text Text
-          | File Text [Part]
+          | FileBlob Text [Part]
           deriving Show
 
 instance FromJSON SHA1 where
@@ -68,7 +68,7 @@ instance FromJSON Blob where
                          <|>
                          (do t <- v .: "camliType"
                              if t == ("file" :: Text) then
-                               File <$> v .: "fileName"
+                               FileBlob <$> v .: "fileName"
                                     <*> v .: "parts"
                                else fail "not a set-attribute")
   parseJSON invalid    = typeMismatch "Blob" invalid
@@ -85,6 +85,6 @@ index a = do
                execute conn "INSERT INTO permanodes (sha1) VALUES (?) ON CONFLICT DO NOTHING" (Only sha)
              SetAttribute s a v ->
                execute conn "UPDATE permanodes SET attributes = jsonb_set(attributes, ARRAY[?], ?) WHERE sha1 = ?" (a,String v,s)
-             File _ _ ->
+             FileBlob _ _ ->
                execute conn "UPDATE permanodes SET show_in_ui = true WHERE attributes->'camliContent' = ?" (Only (String (unSHA1 sha)))
              Bytes _ -> return 0
