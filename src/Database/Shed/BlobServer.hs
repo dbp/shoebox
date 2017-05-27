@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Database.Bin.BlobServer where
+module Database.Shed.BlobServer where
 
+import Data.Monoid
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString as BS
 import Data.ByteString (ByteString)
@@ -8,7 +9,7 @@ import qualified Data.ByteString.Builder as Builder
 import qualified Crypto.Hash.SHA1 as SHA1
 import qualified Data.Text.Encoding as T
 
-import Database.Bin.Types
+import Database.Shed.Types
 
 getBlobName :: ByteString -> IO SHA1
 getBlobName dat = do
@@ -18,5 +19,5 @@ getBlobName dat = do
 
 class BlobServer a where
   writeBlob :: a -> ByteString -> IO SHA1
-  readBlob :: a -> SHA1 -> IO (Maybe ByteString)
-  enumerateBlobs :: a -> (SHA1 -> ByteString -> IO ()) -> IO ()
+  readBlob :: a -> SHA1 -> IO (Maybe BL.ByteString)
+  enumerateBlobs :: a -> (SHA1 -> BL.ByteString -> IO ()) -> IO ()

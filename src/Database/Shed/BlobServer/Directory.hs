@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Database.Bin.BlobServer.Directory where
+module Database.Shed.BlobServer.Directory where
 
 import Data.Monoid
 import Data.Text (Text)
@@ -12,8 +12,8 @@ import qualified Data.Text.Encoding as T
 import qualified Data.Text as T
 import System.Directory (doesFileExist, listDirectory)
 
-import Database.Bin.Types
-import Database.Bin.BlobServer
+import Database.Shed.Types
+import Database.Shed.BlobServer
 
 data FileStore = FileStore Text
 
@@ -25,17 +25,17 @@ instance BlobServer FileStore where
    return (SHA1 name)
 
  readBlob (FileStore dir) (SHA1 t) = if not ("sha1-" `T.isPrefixOf` t) then error $ T.unpack $ "SHA1 does not start with 'sha1-': " <> t else
-  do let filename = dir <> "/sha1/" <> (T.take 2 (T.drop 4 t)) <> "/" <> (T.take 2 (T.drop 6 t)) <> "/" <> t <> ".dat"
+  do let filename = dir <> "/sha1/" <> (T.take 2 (T.drop 5 t)) <> "/" <> (T.take 2 (T.drop 7 t)) <> "/" <> t <> ".dat"
      ex <- doesFileExist $ T.unpack filename
      if ex
-       then Just <$> BS.readFile (T.unpack filename)
+       then Just <$> BL.readFile (T.unpack filename)
        else return Nothing
 
  enumerateBlobs (FileStore dir) f = enum [dir <> "/sha1"] 0
   where
     enum :: [Text] -> Int -> IO ()
     enum pth 3 =
-      do dat <- BS.readFile $ T.unpack $ T.intercalate "/" pth
+      do dat <- BL.readFile $ T.unpack $ T.intercalate "/" pth
          f (SHA1 $ T.takeWhile (/= '.') (last pth)) dat
     enum pth n = do fs <- listDirectory $ T.unpack $ T.intercalate "/" pth
                     mapM_ (\f -> enum (pth <> [T.pack f]) (n+1)) fs
