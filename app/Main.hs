@@ -15,7 +15,7 @@ import           Data.Monoid                        ((<>))
 import qualified Data.Text                          as T
 import qualified Data.Text.Encoding                 as T
 import           Database.PostgreSQL.Simple         (Connection, Only (..),
-                                                     connectPostgreSQL, query_)
+                                                     connectPostgreSQL, query)
 import           Network.HTTP.Types                 (hContentType)
 import           Network.HTTP.Types.Status          (status200)
 import           Network.Wai                        (Response, responseBuilder,
@@ -58,7 +58,8 @@ instance FromParam SHA1 where
   fromParam _   = Left ParamTooMany
 
 site :: Ctxt -> IO Response
-site ctxt = route ctxt [ end                   ==> indexH
+site ctxt = route ctxt [ end // param "page"          ==> indexH
+                       , path "static" ==> staticServe "static"
                        , segment // path "thumb" ==> thumbH
                        , segment ==> smartBlobH
                        , path "raw" // segment ==> blobH
@@ -75,13 +76,13 @@ readFileBytes ctxt ps =
        Builder.empty
        bs
 
-indexH :: Ctxt -> IO (Maybe Response)
-indexH ctxt = do
-  rs <- query_ (_db ctxt) "SELECT attributes->>'camliContent' as sha1 FROM permanodes WHERE show_in_ui = true LIMIT 10"
+indexH :: Ctxt -> Maybe Int -> IO (Maybe Response)
+indexH ctxt page = do
+  rs <- query (_db ctxt) "SELECT attributes->>'camliContent' FROM permanodes WHERE show_in_ui = true ORDER BY sha1 DESC LIMIT 20 OFFSET ?" (Only (20 * (fromMaybe 0 page)))
   fs <- catMaybes <$> mapM (\(Only sha) ->
                               (fmap (sha, )) <$> ((>>= decode) <$> readBlob (_store ctxt) sha))
                            rs
-  okHtml $ "<doctype !html><html><body><ul>" <> T.concat (map render fs) <> "</ul></body></html>"
+  okHtml $ "<doctype !html><html><head><link rel='stylesheet' href='/static/main.css'/></head><body><ul>" <> T.concat (map render fs) <> "</ul><a href='?page=" <> maybe "1" (T.pack . show . (+1)) page <> "'>More</a></body></html>"
   where render (SHA1 sha, FileBlob name _) =
           "<li><a href='/" <> sha <> "'><img src='" <> sha <> "/thumb'/>" <> name <> "</a></li>"
         render _ = "<li>Not a file</li>"
