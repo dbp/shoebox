@@ -45,6 +45,10 @@ executable shed-exe
                      , logging
                      , aeson
                      , postgresql-simple
+                     , binary
+                     , filepath
+                     , bytestring
+                     , containers
   default-language:    Haskell2010
 
 test-suite shed-test

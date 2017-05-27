@@ -44,6 +44,14 @@ data Blob = Bytes BL.ByteString
           | FileBlob Text [Part]
           deriving Show
 
+readBlob' :: BlobServer a => a -> SHA1 -> IO (Maybe Blob)
+readBlob' a s = do b <- readBlob a s
+                   case b of
+                     Nothing -> return Nothing
+                     Just res -> case decode res of
+                                   Nothing   -> return (Just $ Bytes res)
+                                   Just blob -> return blob
+
 instance FromJSON SHA1 where
   parseJSON (String s) = return (SHA1 s)
   parseJSON invalid    = typeMismatch "SHA1" invalid
@@ -88,3 +96,9 @@ index a = do
              FileBlob _ _ ->
                execute conn "UPDATE permanodes SET show_in_ui = true WHERE attributes->'camliContent' = ?" (Only (String (unSHA1 sha)))
              Bytes _ -> return 0
+
+wipe :: IO ()
+wipe = do
+  conn <- connectPostgreSQL "dbname=shed"
+  void $ execute_ conn "delete from permanodes"
+

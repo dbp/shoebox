@@ -1,0 +1,15 @@
+{"camliVersion": 1,
+  "camliType": "file",
+  "fileName": "DSCF1250-X3.jpeg",
+  "parts": [
+    {
+      "blobRef": "sha1-86ad0056f8921eedeaee3d62a69a5f67729aae34",
+      "size": 262144
+    },
+    {
+      "blobRef": "sha1-699ec05a79d030c528a197b88c1c3d301601cc68",
+      "size": 54110
+    }
+  ],
+  "unixMtime": "2017-05-27T17:33:31Z"
+}
