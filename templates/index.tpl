@@ -7,10 +7,11 @@
     <div style="visibility:hidden; opacity:0" class="dropzone"></div>
     <ul>
       <files>
-        <li>
+        <li class="file">
           <is-file>
-            <a href='/${sha}'>
-              <img src='/${sha}/thumb'/>
+            <a class="info" href="/raw/${sha}"></a>
+            <a class="thumb" href="/${sha}">
+              <img src="/${sha}/thumb"/>
               <name/>
             </a>
           </is-file>

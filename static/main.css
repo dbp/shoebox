@@ -2,15 +2,44 @@ ul {
     list-style-type: none;
 }
 
-li {
+li.file {
     text-align: center;
     display: inline-block;
+    vertical-align: top;
     padding: 10px;
+    position: relative;
+    width: 128px;
+    height: 128px;
+}
+
+
+li a.thumb {
+    position: absolute;
+    bottom: 0;
+    display: block;
+}
+
+li a.info {
+    display: block;
+    width: 32px;
+    height: 32px;
+    background-image: url("/static/info.png");
+    background-size: 100%;
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 10;
+}
+
+li a.info:hover {
+    background-image: url("/static/info_b.png");
+    cursor: pointer;
 }
 
 li img {
     display: block;
     max-width: 128px;
+    max-height: 128px;
 }
 
 div.dropzone {
