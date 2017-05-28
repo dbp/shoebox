@@ -21,6 +21,8 @@ library
                      , Database.Shed.BlobServer.Memory
                      , Database.Shed.Indexer
                      , Database.Shed.Images
+                     , Database.Shed.Signing
+                     , Database.Shed.Files
   c-sources:           src/Database/Shed/Images.c
 
   cc-options:          -Wall -O2
@@ -35,6 +37,10 @@ library
                      , containers
                      , aeson
                      , inline-c
+                     , process
+                     , random
+                     , time
+                     , fn
   default-language:    Haskell2010
 
 executable shed-exe

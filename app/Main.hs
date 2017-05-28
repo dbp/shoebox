@@ -21,15 +21,17 @@ import           Network.HTTP.Types.Status          (status200)
 import           Network.Wai                        (Response, responseBuilder,
                                                      responseLBS)
 import           Network.Wai.Handler.Warp           (runEnv)
-import           System.Environment                 (lookupEnv)
+import           System.Environment                 (getEnv, lookupEnv)
 import           System.FilePath                    (takeExtension)
 import           Web.Fn
 import qualified Web.Larceny                        as L
 
 import           Database.Shed.BlobServer
 import           Database.Shed.BlobServer.Directory
+import           Database.Shed.Files
 import           Database.Shed.Images
 import           Database.Shed.Indexer
+import           Database.Shed.Signing
 import           Database.Shed.Types
 
 type Fill = L.Fill ()
@@ -40,6 +42,7 @@ data Ctxt = Ctxt { _req     :: FnRequest
                  , _store   :: FileStore
                  , _db      :: Connection
                  , _library :: Library
+                 , _key     :: Key
                  }
 instance RequestContext Ctxt where
   getRequest = _req
@@ -62,8 +65,13 @@ initializer = do
   db <- T.pack . fromMaybe "shed" <$> lookupEnv "INDEX"
   conn <- connectPostgreSQL $ T.encodeUtf8 $ "dbname='" <> db <> "'"
   pth <- T.pack . fromMaybe "." <$> (lookupEnv "BLOBS")
+  let store = FileStore pth
+  keyid <- T.pack <$> getEnv "KEY"
+  keyblob <- getPubKey keyid
+  ref <- writeBlob store keyblob
+  let key = Key keyid ref
   log' $ "Opening up the shed (" <> pth <> " & " <> db <> ")..."
-  return (Ctxt defaultFnRequest (FileStore pth) conn lib)
+  return (Ctxt defaultFnRequest store conn lib key)
 
 main :: IO ()
 main = withStderrLogging $
@@ -219,4 +227,5 @@ smartBlobH ctxt sha@(SHA1 s) =
 
 uploadH :: Ctxt -> File -> IO (Maybe Response)
 uploadH ctxt f = do log' $ "Uploading " <> fileName f <> "..."
-                    okText "OK."
+                    addFile (_db ctxt) (_key ctxt) (_store ctxt) f
+                    okText "OK"

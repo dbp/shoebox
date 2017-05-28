@@ -11,11 +11,14 @@ import qualified Data.ByteString.Lazy                 as BL
 import qualified Data.Map                             as M
 import           Data.Monoid                          ((<>))
 import           Data.Text                            (Text)
+import           Data.Time.Clock
 import           Database.PostgreSQL.Simple
 import           Database.PostgreSQL.Simple.FromField
 import           Database.PostgreSQL.Simple.FromRow
 import           Database.PostgreSQL.Simple.ToField
+
 import           Database.Shed.BlobServer
+import           Database.Shed.Signing
 import           Database.Shed.Types
 
 data Permanode = Permanode { pId        :: Int
@@ -40,8 +43,8 @@ instance FromRow Permanode where
 data Part = Part SHA1 Int deriving Show
 
 data Blob = Bytes BL.ByteString
-          | PermanodeBlob
-          | SetAttribute SHA1 Text Text
+          | PermanodeBlob SHA1 Text
+          | SetAttribute SHA1 UTCTime SHA1 Text Text
           | FileBlob Text [Part]
           deriving Show
 
@@ -57,20 +60,31 @@ instance FromJSON SHA1 where
   parseJSON (String s) = return (SHA1 s)
   parseJSON invalid    = typeMismatch "SHA1" invalid
 
+instance ToJSON SHA1 where
+  toJSON (SHA1 sha) = String sha
+
 instance FromJSON Part where
   parseJSON (Object v) = Part <$> v .: "blobRef"
                               <*> v .: "size"
   parseJSON invalid = typeMismatch "SHA1" invalid
 
+instance ToJSON Part where
+  toJSON (Part ref size) = object ["blobRef" .= ref
+                                  ,"size" .= size]
+
 instance FromJSON Blob where
   parseJSON (Object v) = (do t <- v .: "camliType"
+                             r <- v .: "random"
+                             s <- v .: "camliSigner"
                              if t == ("permanode" :: Text)
-                               then return PermanodeBlob
+                               then return (PermanodeBlob s r)
                                else fail "Not a permanode")
                          <|>
                          (do t <- v .: "claimType"
                              if t == ("set-attribute" :: Text) then
-                               SetAttribute <$> v .: "permaNode"
+                               SetAttribute <$> v .: "camliSigner"
+                                            <*> v .: "claimDate"
+                                            <*> v .: "permaNode"
                                             <*> v .: "attribute"
                                             <*> v .: "value"
                                else fail "not a set-attribute")
@@ -82,6 +96,41 @@ instance FromJSON Blob where
                                else fail "not a set-attribute")
   parseJSON invalid    = typeMismatch "Blob" invalid
 
+
+instance ToJSON Blob where
+  toJSON (PermanodeBlob signer random) =
+    object ["camliVersion" .= (1 :: Int)
+           ,"camliType" .= ("permanode" :: Text)
+           ,"camliSigner" .= signer
+           ,"random" .= random]
+  toJSON (Bytes _) = error "Cannot encode Bytes as JSON"
+  toJSON (SetAttribute signer date permanode attr val) =
+    object ["camliVersion" .= (1 :: Int)
+           ,"camliType" .= ("claim" :: Text)
+           ,"camliSigner" .= signer
+           ,"claimDate" .= date
+           ,"claimType" .= ("set-attribute" :: Text)
+           ,"attribute" .= attr
+           ,"value" .= val]
+  toJSON (FileBlob name parts) =
+    object ["camliVersion" .= (1 :: Int)
+           ,"camliType" .= ("file" :: Text)
+           ,"fileName" .= name
+           ,"parts" .= parts]
+
+
+blobToSignedJson :: Key -> Blob -> IO ByteString
+blobToSignedJson k b = signJson k $ BL.toStrict $ encode b
+
+indexBlob :: Connection -> SHA1 -> Blob -> IO ()
+indexBlob conn (SHA1 sha) (PermanodeBlob _ _) =
+  void $ execute conn "INSERT INTO permanodes (sha1) VALUES (?) ON CONFLICT DO NOTHING" (Only sha)
+indexBlob conn (SHA1 sha) (SetAttribute s d p a v) =
+  void $ execute conn "UPDATE permanodes SET attributes = jsonb_set(attributes, ARRAY[?], ?) WHERE sha1 = ?" (a,String v,p)
+indexBlob conn (SHA1 sha) (FileBlob _ _) =
+  void $ execute conn "UPDATE permanodes SET show_in_ui = true WHERE attributes->'camliContent' = ?" (Only (String sha))
+indexBlob _ _ (Bytes _) = return ()
+
 index :: BlobServer a => a -> IO ()
 index a = do
   conn <- connectPostgreSQL "dbname=shed"
@@ -91,14 +140,7 @@ index a = do
     let blob = case decode dat of
                  Nothing -> Bytes dat
                  Just b  -> b
-    void $ case blob of
-             PermanodeBlob ->
-               execute conn "INSERT INTO permanodes (sha1) VALUES (?) ON CONFLICT DO NOTHING" (Only sha)
-             SetAttribute s a v ->
-               execute conn "UPDATE permanodes SET attributes = jsonb_set(attributes, ARRAY[?], ?) WHERE sha1 = ?" (a,String v,s)
-             FileBlob _ _ ->
-               execute conn "UPDATE permanodes SET show_in_ui = true WHERE attributes->'camliContent' = ?" (Only (String (unSHA1 sha)))
-             Bytes _ -> return 0
+    indexBlob conn sha blob
   putStrLn "\rDONE                                            "
 
 wipe :: IO ()

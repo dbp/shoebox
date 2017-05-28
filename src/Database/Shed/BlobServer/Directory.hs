@@ -10,7 +10,8 @@ import           Data.Monoid
 import           Data.Text                (Text)
 import qualified Data.Text                as T
 import qualified Data.Text.Encoding       as T
-import           System.Directory         (doesFileExist, listDirectory)
+import           System.Directory         (createDirectoryIfMissing,
+                                           doesFileExist, listDirectory)
 
 import           Database.Shed.BlobServer
 import           Database.Shed.Types
@@ -20,7 +21,9 @@ data FileStore = FileStore Text
 instance BlobServer FileStore where
  writeBlob (FileStore dir) dat = do
    (SHA1 name) <- getBlobName dat
-   let filename = T.unpack $ dir <> "/sha1/" <> T.take 2 (T.drop 4 name) <> "/" <> T.take 2 (T.drop 6 name) <> "/" <> name <> ".dat"
+   let holder = T.unpack $ dir <> "/sha1/" <> T.take 2 (T.drop 5 name) <> "/" <> T.take 2 (T.drop 7 name) <> "/"
+   createDirectoryIfMissing True holder
+   let filename = holder <> T.unpack name <> ".dat"
    BS.writeFile filename dat
    return (SHA1 name)
 

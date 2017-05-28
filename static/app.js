@@ -32,7 +32,13 @@ window.addEventListener("drop", function(e) {
     }
     var request = new XMLHttpRequest();
     request.open('POST', '/upload', true);
+    request.onreadystatechange = function() {
+	      if (request.readyState > 3 && request.status === 200) {
+            window.location.reload(true);
+        }
+	  };
     request.send(data);
+
 
     document.querySelector(".dropzone").style.visibility = "hidden";
     document.querySelector(".dropzone").style.opacity = 0;
