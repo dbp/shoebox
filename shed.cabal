@@ -15,15 +15,15 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Database.Shed.Types
-                     , Database.Shed.BlobServer
-                     , Database.Shed.BlobServer.Directory
-                     , Database.Shed.BlobServer.Memory
-                     , Database.Shed.Indexer
-                     , Database.Shed.Images
-                     , Database.Shed.Signing
-                     , Database.Shed.Files
-  c-sources:           src/Database/Shed/Images.c
+  exposed-modules:     Shed.Types
+                     , Shed.BlobServer
+                     , Shed.BlobServer.Directory
+                     , Shed.BlobServer.Memory
+                     , Shed.Indexer
+                     , Shed.Images
+                     , Shed.Signing
+                     , Shed.Files
+  c-sources:           src/Shed/Images.c
 
   cc-options:          -Wall -O2
   extra-libraries:     exif

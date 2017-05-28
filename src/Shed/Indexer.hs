@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Database.Shed.Indexer where
+module Shed.Indexer where
 
 import           Control.Applicative                  ((<|>))
 import           Control.Monad                        (void)
@@ -17,9 +17,9 @@ import           Database.PostgreSQL.Simple.FromField
 import           Database.PostgreSQL.Simple.FromRow
 import           Database.PostgreSQL.Simple.ToField
 
-import           Database.Shed.BlobServer
-import           Database.Shed.Signing
-import           Database.Shed.Types
+import           Shed.BlobServer
+import           Shed.Signing
+import           Shed.Types
 
 data Permanode = Permanode { pId        :: Int
                            , sha1       :: SHA1

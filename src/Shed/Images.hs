@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes       #-}
 {-# LANGUAGE TemplateHaskell   #-}
-module Database.Shed.Images where
+module Shed.Images where
 
 import           Data.ByteString        (ByteString)
 import           Data.ByteString.Unsafe (unsafePackMallocCStringLen)

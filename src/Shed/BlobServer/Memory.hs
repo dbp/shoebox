@@ -1,14 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Database.Shed.BlobServer.Memory where
+module Shed.BlobServer.Memory where
 
-import qualified Crypto.Hash.SHA1         as SHA1
-import           Data.ByteString          (ByteString)
-import qualified Data.ByteString.Lazy     as BL
-import qualified Data.HashTable.IO        as H
-import           Data.Text                (Text)
+import qualified Crypto.Hash.SHA1     as SHA1
+import           Data.ByteString      (ByteString)
+import qualified Data.ByteString.Lazy as BL
+import qualified Data.HashTable.IO    as H
+import           Data.Text            (Text)
 
-import           Database.Shed.BlobServer
-import           Database.Shed.Types
+import           Shed.BlobServer
+import           Shed.Types
 
 type HashTable k v = H.BasicHashTable k v
 

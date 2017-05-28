@@ -1,20 +1,20 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Database.Shed.BlobServer.Directory where
+module Shed.BlobServer.Directory where
 
-import qualified Crypto.Hash.SHA1         as SHA1
-import           Data.ByteString          (ByteString)
-import qualified Data.ByteString          as BS
-import qualified Data.ByteString.Builder  as Builder
-import qualified Data.ByteString.Lazy     as BL
+import qualified Crypto.Hash.SHA1        as SHA1
+import           Data.ByteString         (ByteString)
+import qualified Data.ByteString         as BS
+import qualified Data.ByteString.Builder as Builder
+import qualified Data.ByteString.Lazy    as BL
 import           Data.Monoid
-import           Data.Text                (Text)
-import qualified Data.Text                as T
-import qualified Data.Text.Encoding       as T
-import           System.Directory         (createDirectoryIfMissing,
-                                           doesFileExist, listDirectory)
+import           Data.Text               (Text)
+import qualified Data.Text               as T
+import qualified Data.Text.Encoding      as T
+import           System.Directory        (createDirectoryIfMissing,
+                                          doesFileExist, listDirectory)
 
-import           Database.Shed.BlobServer
-import           Database.Shed.Types
+import           Shed.BlobServer
+import           Shed.Types
 
 data FileStore = FileStore Text
 

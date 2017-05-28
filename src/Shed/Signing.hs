@@ -1,15 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Database.Shed.Signing where
+module Shed.Signing where
 
-import           Data.ByteString     (ByteString)
-import qualified Data.ByteString     as B
+import           Data.ByteString    (ByteString)
+import qualified Data.ByteString    as B
 import           Data.Monoid
-import           Data.Text           (Text)
-import qualified Data.Text           as T
-import qualified Data.Text.Encoding  as T
+import           Data.Text          (Text)
+import qualified Data.Text          as T
+import qualified Data.Text.Encoding as T
 import           System.Process
 
-import           Database.Shed.Types
+import           Shed.Types
 
 -- | signJson takes a GPG key id, serialized JSON, returns signed json.
 --

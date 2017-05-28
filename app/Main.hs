@@ -2,37 +2,37 @@
 {-# LANGUAGE TupleSections     #-}
 module Main where
 
-import           Control.Logging                    (log', withStderrLogging)
+import           Control.Logging            (log', withStderrLogging)
 import           Data.Aeson
-import           Data.Binary.Builder                (Builder)
-import qualified Data.Binary.Builder                as Builder
-import           Data.ByteString                    (ByteString)
-import qualified Data.ByteString.Lazy               as BL
-import           Data.Map                           (Map)
-import qualified Data.Map                           as M
-import           Data.Maybe                         (catMaybes, fromMaybe)
-import           Data.Monoid                        ((<>))
-import qualified Data.Text                          as T
-import qualified Data.Text.Encoding                 as T
-import           Database.PostgreSQL.Simple         (Connection, Only (..),
-                                                     connectPostgreSQL, query)
-import           Network.HTTP.Types                 (hContentType)
-import           Network.HTTP.Types.Status          (status200)
-import           Network.Wai                        (Response, responseBuilder,
-                                                     responseLBS)
-import           Network.Wai.Handler.Warp           (runEnv)
-import           System.Environment                 (getEnv, lookupEnv)
-import           System.FilePath                    (takeExtension)
+import           Data.Binary.Builder        (Builder)
+import qualified Data.Binary.Builder        as Builder
+import           Data.ByteString            (ByteString)
+import qualified Data.ByteString.Lazy       as BL
+import           Data.Map                   (Map)
+import qualified Data.Map                   as M
+import           Data.Maybe                 (catMaybes, fromMaybe)
+import           Data.Monoid                ((<>))
+import qualified Data.Text                  as T
+import qualified Data.Text.Encoding         as T
+import           Database.PostgreSQL.Simple (Connection, Only (..),
+                                             connectPostgreSQL, query)
+import           Network.HTTP.Types         (hContentType)
+import           Network.HTTP.Types.Status  (status200)
+import           Network.Wai                (Response, responseBuilder,
+                                             responseLBS)
+import           Network.Wai.Handler.Warp   (runEnv)
+import           System.Environment         (getEnv, lookupEnv)
+import           System.FilePath            (takeExtension)
 import           Web.Fn
-import qualified Web.Larceny                        as L
+import qualified Web.Larceny                as L
 
-import           Database.Shed.BlobServer
-import           Database.Shed.BlobServer.Directory
-import           Database.Shed.Files
-import           Database.Shed.Images
-import           Database.Shed.Indexer
-import           Database.Shed.Signing
-import           Database.Shed.Types
+import           Shed.BlobServer
+import           Shed.BlobServer.Directory
+import           Shed.Files
+import           Shed.Images
+import           Shed.Indexer
+import           Shed.Signing
+import           Shed.Types
 
 type Fill = L.Fill ()
 type Library = L.Library ()

@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Database.Shed.Types where
+module Shed.Types where
 
 import           Data.Text (Text)
 import qualified Data.Text as T

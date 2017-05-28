@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections     #-}
-module Database.Shed.Files where
+module Shed.Files where
 
 import           Control.Monad              (guard)
 import           Data.Aeson                 (encode)
@@ -14,9 +14,9 @@ import           Database.PostgreSQL.Simple (Connection)
 import           System.Random              (randomIO)
 import           Web.Fn                     (File (..))
 
-import           Database.Shed.BlobServer
-import           Database.Shed.Indexer
-import           Database.Shed.Types
+import           Shed.BlobServer
+import           Shed.Indexer
+import           Shed.Types
 
 
 chunkSize :: Int
