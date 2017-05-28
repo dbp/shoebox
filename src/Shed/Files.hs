@@ -3,7 +3,7 @@
 module Shed.Files where
 
 import           Control.Monad              (guard)
-import           Data.Aeson                 (encode)
+import           Data.Aeson.Encode.Pretty   (encodePretty)
 import           Data.ByteString            (ByteString)
 import qualified Data.ByteString            as B
 import qualified Data.ByteString.Lazy       as BL
@@ -28,7 +28,7 @@ addFile conn key store file = do
   refs <- mapM (\p -> (,B.length p) <$> writeBlob store p) chunks
   let parts = map (uncurry Part) refs
   let fileblob = FileBlob (fileName file) parts
-  let fileblob' = BL.toStrict $ encode fileblob
+  let fileblob' = BL.toStrict $ encodePretty fileblob
   (SHA1 fref) <- writeBlob store fileblob'
   random <- T.pack . show . abs <$> (randomIO :: IO Int)
   let permablob = PermanodeBlob (keyBlobRef key) random

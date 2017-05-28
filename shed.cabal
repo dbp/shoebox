@@ -37,6 +37,7 @@ library
                      , postgresql-simple
                      , containers
                      , aeson
+                     , aeson-pretty 
                      , inline-c
                      , process
                      , random

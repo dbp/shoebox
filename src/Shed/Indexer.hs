@@ -4,8 +4,12 @@ module Shed.Indexer where
 
 import           Control.Applicative                  ((<|>))
 import           Control.Monad                        (void)
-import           Data.Aeson
-import           Data.Aeson.Types
+import           Data.Aeson                           (decode)
+import           Data.Aeson.Encode.Pretty             (encodePretty)
+import           Data.Aeson.Types                     (FromJSON (..),
+                                                       ToJSON (..), Value (..),
+                                                       object, typeMismatch,
+                                                       (.:), (.=))
 import           Data.ByteString                      (ByteString)
 import qualified Data.ByteString.Lazy                 as BL
 import qualified Data.Map                             as M
@@ -120,7 +124,7 @@ instance ToJSON Blob where
 
 
 blobToSignedJson :: Key -> Blob -> IO ByteString
-blobToSignedJson k b = signJson k $ BL.toStrict $ encode b
+blobToSignedJson k b = signJson k $ BL.toStrict $ encodePretty b
 
 indexBlob :: Connection -> SHA1 -> Blob -> IO ()
 indexBlob conn (SHA1 sha) (PermanodeBlob _ _) =
