@@ -81,6 +81,7 @@ site ctxt = route ctxt [ end // param "page"          ==> indexH
                        , segment // path "thumb" ==> thumbH
                        , segment ==> smartBlobH
                        , path "raw" // segment ==> blobH
+                       , path "upload" // file "file" !=> uploadH
                        ]
                   `fallthrough` notFoundText "Page not found."
 
@@ -215,3 +216,7 @@ smartBlobH ctxt sha@(SHA1 s) =
          let content = maybe [] (\c -> [(hContentType, c)]) $ M.lookup (takeExtension $ T.unpack name) mimeMap
          builder <- readFileBytes ctxt ps
          return $ Just $ responseBuilder status200 content builder
+
+uploadH :: Ctxt -> File -> IO (Maybe Response)
+uploadH ctxt f = do log' $ "Uploading " <> fileName f <> "..."
+                    okText "OK."
