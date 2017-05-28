@@ -29,6 +29,8 @@ li a.info {
     top: 0;
     right: 0;
     z-index: 10;
+    border-radius: 16px;
+    background-color: white;
 }
 
 li a.info:hover {

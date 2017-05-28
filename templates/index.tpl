@@ -8,16 +8,11 @@
     <ul>
       <files>
         <li class="file">
-          <is-file>
-            <a class="info" href="/raw/${sha}"></a>
-            <a class="thumb" href="/${sha}">
-              <img src="/${sha}/thumb"/>
-              <name/>
-            </a>
-          </is-file>
-          <not-file>
-            Not a file.
-          </not-file>
+          <a class="info" href="/raw/${fileRef}"></a>
+          <a class="thumb" href="/${fileRef}">
+            <img src="/${permanodeRef}/thumb"/>
+            <name/>
+          </a>
         </li>
       </files>
     </ul>

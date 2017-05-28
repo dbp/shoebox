@@ -3,31 +3,42 @@
 module Shed.Indexer where
 
 import           Control.Applicative                  ((<|>))
-import           Control.Monad                        (void)
+import           Control.Monad                        (void, when)
 import           Data.Aeson                           (decode)
 import           Data.Aeson.Encode.Pretty             (encodePretty)
 import           Data.Aeson.Types                     (FromJSON (..),
                                                        ToJSON (..), Value (..),
                                                        object, typeMismatch,
                                                        (.:), (.=))
+import           Data.Binary.Builder                  (Builder)
+import qualified Data.Binary.Builder                  as Builder
 import           Data.ByteString                      (ByteString)
 import qualified Data.ByteString.Lazy                 as BL
+import           Data.ByteString.Unsafe               (unsafeUseAsCStringLen)
 import qualified Data.Map                             as M
+import           Data.Maybe                           (catMaybes, listToMaybe)
 import           Data.Monoid                          ((<>))
 import           Data.Text                            (Text)
 import           Data.Time.Clock
 import           Database.PostgreSQL.Simple
-import           Database.PostgreSQL.Simple.FromField
+import           Database.PostgreSQL.Simple.FromField (FromField (..),
+                                                       fromJSONField)
 import           Database.PostgreSQL.Simple.FromRow
 import           Database.PostgreSQL.Simple.ToField
+import           Magic                                (MagicFlag (MagicMimeType),
+                                                       magicCString,
+                                                       magicLoadDefault,
+                                                       magicOpen)
+
 
 import           Shed.BlobServer
+import           Shed.Images
 import           Shed.Signing
 import           Shed.Types
 
-data Permanode = Permanode { pId        :: Int
-                           , sha1       :: SHA1
+data Permanode = Permanode { sha1       :: SHA1
                            , attributes :: M.Map Text Text
+                           , thumbnail  :: ByteString
                            }
 
 instance FromField SHA1 where
@@ -126,14 +137,44 @@ instance ToJSON Blob where
 blobToSignedJson :: Key -> Blob -> IO ByteString
 blobToSignedJson k b = signJson k $ BL.toStrict $ encodePretty b
 
-indexBlob :: Connection -> SHA1 -> Blob -> IO ()
-indexBlob conn (SHA1 sha) (PermanodeBlob _ _) =
+readFileBytes :: BlobServer a => a -> [Part] -> IO Builder
+readFileBytes store ps =
+  do bs <- catMaybes <$> mapM (\(Part sha _) -> readBlob store sha) ps
+     return $ foldl (\builder st ->
+               Builder.append builder
+               (Builder.fromLazyByteString st))
+       Builder.empty
+       bs
+
+
+indexBlob :: BlobServer a => a -> Connection -> SHA1 -> Blob -> IO ()
+indexBlob store conn (SHA1 sha) (PermanodeBlob _ _) =
   void $ execute conn "INSERT INTO permanodes (sha1) VALUES (?) ON CONFLICT DO NOTHING" (Only sha)
-indexBlob conn (SHA1 sha) (SetAttribute s d p a v) =
+indexBlob store conn (SHA1 sha) (SetAttribute s d p a v) =
   void $ execute conn "UPDATE permanodes SET attributes = jsonb_set(attributes, ARRAY[?], ?) WHERE sha1 = ?" (a,String v,p)
-indexBlob conn (SHA1 sha) (FileBlob _ _) =
-  void $ execute conn "UPDATE permanodes SET show_in_ui = true WHERE attributes->'camliContent' = ?" (Only (String sha))
-indexBlob _ _ (Bytes _) = return ()
+indexBlob store conn (SHA1 sha) (FileBlob _ parts) = do
+  Just (Only n) <- listToMaybe <$> query conn "SELECT COUNT(*) FROM permanodes WHERE attributes->'camliContent' = ?" (Only (String sha))
+  when (n > (0 :: Int)) $ do
+    execute conn "UPDATE permanodes SET show_in_ui = true WHERE attributes->'camliContent' = ?" (Only (String sha))
+    builder <- readFileBytes store parts
+    let dat = BL.toStrict $ Builder.toLazyByteString builder
+    res <- getExifThumbnail dat
+    case res of
+      Nothing  ->
+        do m <- magicOpen [MagicMimeType]
+           magicLoadDefault m
+           mime <- unsafeUseAsCStringLen dat (magicCString m)
+           let mkThumb = do
+                thm <- createThumbnail dat
+                case thm of
+                  Nothing -> return ()
+                  Just jpg -> void $ execute conn "UPDATE permanodes SET thumbnail = ? WHERE attributes->'camliContent' = ?" (Binary jpg, String sha)
+           case mime of
+             "image/jpeg" -> mkThumb
+             "image/png"  -> mkThumb
+      Just jpg -> void $ execute conn "UPDATE permanodes SET thumbnail = ? WHERE attributes->'camliContent' = ?" (Binary jpg, String sha)
+
+indexBlob _ _ _ (Bytes _) = return ()
 
 index :: BlobServer a => a -> IO ()
 index a = do
@@ -144,7 +185,7 @@ index a = do
     let blob = case decode dat of
                  Nothing -> Bytes dat
                  Just b  -> b
-    indexBlob conn sha blob
+    indexBlob a conn sha blob
   putStrLn "\rDONE                                            "
 
 wipe :: IO ()

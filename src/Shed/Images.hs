@@ -3,7 +3,12 @@
 {-# LANGUAGE TemplateHaskell   #-}
 module Shed.Images where
 
+import           Codec.Picture          (DynamicImage (ImageRGB8), Image (..),
+                                         convertRGB8, decodeImage)
+import           Codec.Picture.Extra    (scaleBilinear)
+import           Codec.Picture.Saving   (imageToJpg)
 import           Data.ByteString        (ByteString)
+import qualified Data.ByteString.Lazy   as BL
 import           Data.ByteString.Unsafe (unsafePackMallocCStringLen)
 import           Data.Monoid            ((<>))
 import           Foreign.C.Types
@@ -42,3 +47,17 @@ getExifThumbnail jpg = (C.withPtr $ \str -> C.withPtr $ \size -> [C.block|
      Just <$> unsafePackMallocCStringLen (ptr, fromIntegral len)
    else
      return Nothing
+
+createThumbnail :: ByteString -> IO (Maybe BL.ByteString)
+createThumbnail bs =
+  case decodeImage bs of
+    Left _    -> return Nothing
+    Right img' ->
+      do let img = convertRGB8 img'
+         let ht = imageHeight img
+         let wd = imageWidth img
+         let (ht',wd') = if ht >= wd then
+                           (128, (128 * wd) `div` ht)
+                         else
+                           ((128 * ht) `div` wd, 128)
+         return $ Just $ imageToJpg 50 $ ImageRGB8 $ scaleBilinear ht' wd' img

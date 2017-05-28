@@ -38,9 +38,9 @@ addFile conn key store file = do
   let claimblob = SetAttribute (keyBlobRef key) now pref "camliContent" fref
   claim <- blobToSignedJson key claimblob
   cref <- writeBlob store claim
-  indexBlob conn pref permablob
-  indexBlob conn cref claimblob
-  indexBlob conn (SHA1 fref) fileblob
+  indexBlob store conn pref permablob
+  indexBlob store conn cref claimblob
+  indexBlob store conn (SHA1 fref) fileblob
 
 splitEvery :: Int -> ByteString -> [ByteString]
 splitEvery n bs = if B.length bs <= n then [bs] else

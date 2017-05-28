@@ -10,11 +10,11 @@ import           Data.ByteString            (ByteString)
 import qualified Data.ByteString.Lazy       as BL
 import           Data.Map                   (Map)
 import qualified Data.Map                   as M
-import           Data.Maybe                 (catMaybes, fromMaybe)
+import           Data.Maybe                 (catMaybes, fromMaybe, listToMaybe)
 import           Data.Monoid                ((<>))
 import qualified Data.Text                  as T
 import qualified Data.Text.Encoding         as T
-import           Database.PostgreSQL.Simple (Connection, Only (..),
+import           Database.PostgreSQL.Simple (Binary (..), Connection, Only (..),
                                              connectPostgreSQL, query)
 import           Network.HTTP.Types         (hContentType)
 import           Network.HTTP.Types.Status  (status200)
@@ -94,33 +94,17 @@ site ctxt = route ctxt [ end // param "page"          ==> indexH
                        ]
                   `fallthrough` notFoundText "Page not found."
 
-readFileBytes :: Ctxt -> [Part] -> IO Builder
-readFileBytes ctxt ps =
-  do bs <- catMaybes <$> mapM (\(Part sha _) ->
-                                  readBlob (_store ctxt) sha) ps
-     return $ foldl (\builder st ->
-               Builder.append builder
-               (Builder.fromLazyByteString st))
-       Builder.empty
-       bs
-
 indexH :: Ctxt -> Maybe Int -> IO (Maybe Response)
 indexH ctxt page = do
-  rs <- query (_db ctxt) "SELECT attributes->>'camliContent' FROM permanodes WHERE show_in_ui = true ORDER BY sha1 DESC LIMIT 20 OFFSET ?" (Only (20 * (fromMaybe 0 page)))
-  fs <- catMaybes <$> mapM (\(Only sha) ->
-                              (fmap (sha, )) <$> ((>>= decode) <$> readBlob (_store ctxt) sha))
-                           rs
+  ps <- query (_db ctxt) "SELECT sha1, attributes->>'camliContent' FROM permanodes WHERE show_in_ui = true ORDER BY sha1 DESC LIMIT 20 OFFSET ?" (Only (20 * (fromMaybe 0 page)))
   renderWith ctxt
-             (L.subs [("next-page", L.textFill $ maybe "1" (T.pack . show . (+1)) page)
-                     ,("files", L.mapSubs (\f -> case f of
-                                                   (SHA1 sha, FileBlob name _) -> L.subs [("is-file", L.fillChildren)
-                                                                                         ,("not-file", L.textFill "")
-                                                                                         ,("sha", L.textFill sha)
-                                                                                         ,("name", L.textFill name)]
-                                                   _ -> L.subs [("is-file", L.textFill "")
-                                                               ,("not-file", L.fillChildren)])
-                                fs)])
-             "index"
+    (L.subs [("next-page", L.textFill $ maybe "1" (T.pack . show . (+1)) page)
+            ,("files",
+              L.mapSubs (\(sha, content) ->
+                            L.subs [("permanodeRef", L.textFill sha)
+                                   ,("fileRef", L.textFill content)])
+               ps)])
+    "index"
 
 blobH :: Ctxt -> SHA1 -> IO (Maybe Response)
 blobH ctxt sha@(SHA1 s) =
@@ -197,33 +181,40 @@ renderIcon :: IO (Maybe Response)
 renderIcon = sendFile "static/icon.png"
 
 thumbH :: Ctxt -> SHA1 -> IO (Maybe Response)
-thumbH ctxt sha@(SHA1 s) =
-  do log' $ "Thumbnail of " <> s
-     res' <- readBlob' (_store ctxt) sha
-     case res' of
-       Nothing  -> return Nothing
-       Just (Bytes bs) -> renderIcon
-       Just (FileBlob name ps) -> do
-         let content = maybe [] (\c -> [(hContentType, c)]) $ M.lookup (takeExtension $ T.unpack name) mimeMap
-         builder <- readFileBytes ctxt ps
-         let dat = BL.toStrict $ Builder.toLazyByteString builder
-         res <- getExifThumbnail dat
-         case res of
-           Nothing -> renderIcon
-           Just jpg ->
-             return $ Just $ responseBuilder status200 [(hContentType, "image/jpeg")] (Builder.fromByteString jpg)
+thumbH ctxt sha =
+  do res <- listToMaybe <$> query (_db ctxt) "SELECT thumbnail FROM permanodes WHERE sha1 = ?" (Only sha)
+     case res of
+       Nothing -> renderIcon
+       Just (Only (Binary jpg)) -> return $ Just $ responseBuilder status200 [(hContentType, "image/jpeg")] (Builder.fromByteString jpg)
+
+-- thumbH :: Ctxt -> SHA1 -> IO (Maybe Response)
+-- thumbH ctxt sha@(SHA1 s) =
+--   do log' $ "Thumbnail of " <> s
+--      res' <- readBlob' (_store ctxt) sha
+--      case res' of
+--        Nothing  -> return Nothing
+--        Just (Bytes bs) -> renderIcon
+--        Just (FileBlob name ps) -> do
+--          let content = maybe [] (\c -> [(hContentType, c)]) $ M.lookup (takeExtension $ T.unpack name) mimeMap
+--          builder <- readFileBytes (_store ctxt) ps
+--          let dat = BL.toStrict $ Builder.toLazyByteString builder
+--          res <- getExifThumbnail dat
+--          case res of
+--            Nothing -> renderIcon
+--            Just jpg ->
+--              return $ Just $ responseBuilder status200 [(hContentType, "image/jpeg")] (Builder.fromByteString jpg)
+
 
 
 smartBlobH :: Ctxt -> SHA1 -> IO (Maybe Response)
 smartBlobH ctxt sha@(SHA1 s) =
-  do log' $ "Reading (smart) " <> s
-     res' <- readBlob' (_store ctxt) sha
+  do res' <- readBlob' (_store ctxt) sha
      case res' of
        Nothing  -> return Nothing
        Just (Bytes bs) -> return $ Just $ responseLBS status200 [] bs
        Just (FileBlob name ps) -> do
          let content = maybe [] (\c -> [(hContentType, c)]) $ M.lookup (takeExtension $ T.unpack name) mimeMap
-         builder <- readFileBytes ctxt ps
+         builder <- readFileBytes (_store ctxt) ps
          return $ Just $ responseBuilder status200 content builder
 
 uploadH :: Ctxt -> File -> IO (Maybe Response)

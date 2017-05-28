@@ -49,6 +49,9 @@ library
                      , temporary
                      , mtl
                      , magic
+                     , JuicyPixels
+                     , JuicyPixels-extra
+                     , binary
   default-language:    Haskell2010
 
 executable shed-exe
