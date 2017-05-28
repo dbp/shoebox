@@ -27,6 +27,7 @@ process :: BlobServer a => a -> Key -> Connection -> File -> IO ()
 process store key conn f =
   case fileContentType f of
     "image/jpeg" -> addFile conn key store f
+    "image/png" -> addFile conn key store f
     "application/zip" -> unzipper store key conn f
     typ -> log' $ "Don't know how to process files of type " <> typ <> "."
 
