@@ -23,6 +23,7 @@ library
                      , Shed.Images
                      , Shed.Signing
                      , Shed.Files
+                     , Shed.Importers
   c-sources:           src/Shed/Images.c
 
   cc-options:          -Wall -O2
@@ -41,6 +42,12 @@ library
                      , random
                      , time
                      , fn
+                     , logging
+                     , conduit-extra
+                     , zip-conduit
+                     , temporary
+                     , mtl
+                     , magic
   default-language:    Haskell2010
 
 executable shed-exe

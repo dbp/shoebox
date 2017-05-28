@@ -5,6 +5,11 @@ packages:
     git: https://github.com/positiondev/larceny.git
     commit: 48dfe03dafff5eb82da3ea270e89f9bfc7291c86
   extra-dep: true
+- location:
+    git: https://github.com/dbp/zip-conduit.git
+    commit: 098ba00ae02ae3a55a2b918327623e6f6e19d478
+  extra-dep: true
 extra-deps:
 - logging-3.0.4
 - html-entities-1.1.4
+- zip-conduit-0.2.2.2

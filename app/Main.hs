@@ -30,6 +30,7 @@ import           Shed.BlobServer
 import           Shed.BlobServer.Directory
 import           Shed.Files
 import           Shed.Images
+import           Shed.Importers
 import           Shed.Indexer
 import           Shed.Signing
 import           Shed.Types
@@ -227,5 +228,5 @@ smartBlobH ctxt sha@(SHA1 s) =
 
 uploadH :: Ctxt -> File -> IO (Maybe Response)
 uploadH ctxt f = do log' $ "Uploading " <> fileName f <> "..."
-                    addFile (_db ctxt) (_key ctxt) (_store ctxt) f
+                    process (_store ctxt) (_key ctxt) (_db ctxt) f
                     okText "OK"
