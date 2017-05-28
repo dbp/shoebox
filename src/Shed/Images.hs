@@ -56,8 +56,8 @@ createThumbnail bs =
       do let img = convertRGB8 img'
          let ht = imageHeight img
          let wd = imageWidth img
-         let (ht',wd') = if ht >= wd then
-                           (128, (128 * wd) `div` ht)
+         let (wd', ht') = if ht >= wd then
+                           ((128 * wd) `div` ht, 128)
                          else
-                           ((128 * ht) `div` wd, 128)
-         return $ Just $ imageToJpg 50 $ ImageRGB8 $ scaleBilinear ht' wd' img
+                           (128, (128 * ht) `div` wd)
+         return $ Just $ imageToJpg 75 $ ImageRGB8 $ scaleBilinear wd' ht' img
