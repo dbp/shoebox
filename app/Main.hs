@@ -24,6 +24,7 @@ import           Network.Wai.Handler.Warp           (runEnv)
 import           System.Environment                 (lookupEnv)
 import           System.FilePath                    (takeExtension)
 import           Web.Fn
+import qualified Web.Larceny                        as L
 
 import           Database.Shed.BlobServer
 import           Database.Shed.BlobServer.Directory
@@ -31,21 +32,38 @@ import           Database.Shed.Images
 import           Database.Shed.Indexer
 import           Database.Shed.Types
 
-data Ctxt = Ctxt { _req   :: FnRequest
-                 , _store :: FileStore
-                 , _db    :: Connection
+type Fill = L.Fill ()
+type Library = L.Library ()
+type Substitutions = L.Substitutions ()
+
+data Ctxt = Ctxt { _req     :: FnRequest
+                 , _store   :: FileStore
+                 , _db      :: Connection
+                 , _library :: Library
                  }
 instance RequestContext Ctxt where
   getRequest = _req
   setRequest c r = c { _req = r }
 
+render :: Ctxt -> T.Text -> IO (Maybe Response)
+render ctxt = renderWith ctxt mempty
+
+renderWith :: Ctxt -> Substitutions -> T.Text -> IO (Maybe Response)
+renderWith ctxt subs tpl =
+  do t <- L.renderWith (_library ctxt) subs () (T.splitOn "/" tpl)
+     case t of
+       Nothing -> return Nothing
+       Just t' -> okHtml t'
+
+
 initializer :: IO Ctxt
 initializer = do
+  lib <- L.loadTemplates "templates" L.defaultOverrides
   db <- T.pack . fromMaybe "shed" <$> lookupEnv "INDEX"
   conn <- connectPostgreSQL $ T.encodeUtf8 $ "dbname='" <> db <> "'"
   pth <- T.pack . fromMaybe "." <$> (lookupEnv "BLOBS")
   log' $ "Opening up the shed (" <> pth <> " & " <> db <> ")..."
-  return (Ctxt defaultFnRequest (FileStore pth) conn)
+  return (Ctxt defaultFnRequest (FileStore pth) conn lib)
 
 main :: IO ()
 main = withStderrLogging $
@@ -82,10 +100,17 @@ indexH ctxt page = do
   fs <- catMaybes <$> mapM (\(Only sha) ->
                               (fmap (sha, )) <$> ((>>= decode) <$> readBlob (_store ctxt) sha))
                            rs
-  okHtml $ "<doctype !html><html><head><link rel='stylesheet' href='/static/main.css'/></head><body><ul>" <> T.concat (map render fs) <> "</ul><a href='?page=" <> maybe "1" (T.pack . show . (+1)) page <> "'>More</a></body></html>"
-  where render (SHA1 sha, FileBlob name _) =
-          "<li><a href='/" <> sha <> "'><img src='" <> sha <> "/thumb'/>" <> name <> "</a></li>"
-        render _ = "<li>Not a file</li>"
+  renderWith ctxt
+             (L.subs [("next-page", L.textFill $ maybe "1" (T.pack . show . (+1)) page)
+                     ,("files", L.mapSubs (\f -> case f of
+                                                   (SHA1 sha, FileBlob name _) -> L.subs [("is-file", L.fillChildren)
+                                                                                         ,("not-file", L.textFill "")
+                                                                                         ,("sha", L.textFill sha)
+                                                                                         ,("name", L.textFill name)]
+                                                   _ -> L.subs [("is-file", L.textFill "")
+                                                               ,("not-file", L.fillChildren)])
+                                fs)])
+             "index"
 
 blobH :: Ctxt -> SHA1 -> IO (Maybe Response)
 blobH ctxt sha@(SHA1 s) =

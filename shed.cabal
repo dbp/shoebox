@@ -55,6 +55,7 @@ executable shed-exe
                      , filepath
                      , bytestring
                      , containers
+                     , larceny
   default-language:    Haskell2010
 
 test-suite shed-test
