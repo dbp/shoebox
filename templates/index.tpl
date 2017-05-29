@@ -5,7 +5,7 @@
         <a class="info" href="/raw/${contentRef}"></a>
         <a class="thumb" href="/${contentRef}">
           <has-thumbnail>
-            <img src="/${permanodeRef}/thumb"/>
+            <img src="/static/icon.png" data-layzr="/${permanodeRef}/thumb"/>
           </has-thumbnail>
           <has-preview>
             <div class="preview">

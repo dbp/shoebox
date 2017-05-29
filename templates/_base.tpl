@@ -12,5 +12,6 @@
     </form>
     <apply-content/>
   </body>
+  <script type="text/javascript" src="/static/layzr.min.js"></script>
   <script type="text/javascript" src="/static/app.js"></script>
 </html>

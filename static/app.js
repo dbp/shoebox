@@ -1,3 +1,6 @@
+// Lazy loading of images
+window.layzr = new Layzr();
+
 /* lastTarget is set first on dragenter, then
    compared with during dragleave. */
 var lastTarget = null;
