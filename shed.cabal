@@ -76,6 +76,9 @@ executable shed-exe
                      , containers
                      , larceny 
                      , html-entities
+                     , regex
+                     , aeson-pretty
+                     , magic
   default-language:    Haskell2010
 
 test-suite shed-test

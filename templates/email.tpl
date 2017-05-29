@@ -1,11 +1,9 @@
 <apply template="_base">
-  <pre class="email">
-<from/>
-Subject: <subject/>
-Date: <date/>
-Message-Id: <message-id/>
-
-
-<body-content/>
-  </pre>
+  <div class="email">
+    From: <from/><br/>
+    Subject: <subject/><br/>
+    Date: <date/><br/>
+    Message-Id: <message-id/><br/>
+  </div>
+  <pre class="blob"><body-content/></pre>
 </apply>

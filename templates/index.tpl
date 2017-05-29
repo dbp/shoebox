@@ -2,7 +2,7 @@
   <ul>
     <permanodes>
       <li class="file">
-        <a class="info" href="/raw/${contentRef}"></a>
+        <a class="info" href="/blob/${permanodeRef}"></a>
         <a class="thumb" href="/${contentRef}">
           <has-thumbnail>
             <img src="/static/icon.png" data-layzr="/${permanodeRef}/thumb"/>
