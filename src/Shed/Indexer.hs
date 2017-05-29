@@ -39,7 +39,8 @@ import           Shed.Types
 
 data Permanode = Permanode { sha1       :: SHA1
                            , attributes :: M.Map Text Text
-                           , thumbnail  :: ByteString
+                           , thumbnail  :: Maybe ByteString
+                           , preview    :: Maybe Text
                            }
 
 instance FromField SHA1 where
@@ -55,10 +56,14 @@ instance FromRow Permanode where
   fromRow = Permanode <$> field
                       <*> field
                       <*> field
+                      <*> field
 
 data Part = Part SHA1 Int deriving Show
 
 data Header = Header Text Text deriving Show
+
+getHeader :: [Header] -> Text -> Maybe Text
+getHeader hs k = (\(Header _ v) -> v) <$> listToMaybe (filter (\(Header k' _) -> k == k') hs)
 
 data Blob = Bytes BL.ByteString
           | PermanodeBlob SHA1 Text
@@ -203,8 +208,10 @@ indexBlob store conn (SHA1 sha) (EmailBlob from headers body) = do
   Just (Only n) <- listToMaybe <$> query conn "SELECT COUNT(*) FROM permanodes WHERE attributes->'camliContent' = ?" (Only (String sha))
   when (n > (0 :: Int)) $ do
     execute conn "UPDATE permanodes SET show_in_ui = true WHERE attributes->'camliContent' = ?" (Only (String sha))
-    jpg <- B.readFile "static/mail.png"
-    void $ execute conn "UPDATE permanodes SET thumbnail = ? WHERE attributes->'camliContent' = ?" (Binary jpg, String sha)
+    let preview = (maybe "" (<> "\n") (getHeader headers "Subject"))
+               <> (maybe "" (\x -> "From: " <> x <> "\n") (getHeader headers "From"))
+               <> (maybe "" (\x -> "Date: " <> x <> "\n") (getHeader headers "Date"))
+    void $ execute conn "UPDATE permanodes SET preview = ? WHERE attributes->'camliContent' = ?" (preview, String sha)
 indexBlob _ _ _ (Bytes _) = return ()
 
 index :: BlobServer a => a -> IO ()

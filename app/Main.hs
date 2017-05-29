@@ -10,12 +10,14 @@ import           Data.ByteString            (ByteString)
 import qualified Data.ByteString.Lazy       as BL
 import           Data.Map                   (Map)
 import qualified Data.Map                   as M
-import           Data.Maybe                 (catMaybes, fromMaybe, listToMaybe)
+import           Data.Maybe                 (catMaybes, fromMaybe, isJust,
+                                             listToMaybe)
 import           Data.Monoid                ((<>))
 import qualified Data.Text                  as T
 import qualified Data.Text.Encoding         as T
 import           Database.PostgreSQL.Simple (Binary (..), Connection, Only (..),
                                              connectPostgreSQL, query)
+import qualified HTMLEntities.Text          as HE
 import           Network.HTTP.Types         (hContentType)
 import           Network.HTTP.Types.Status  (status200)
 import           Network.Wai                (Response, responseBuilder,
@@ -94,16 +96,24 @@ site ctxt = route ctxt [ end // param "page"          ==> indexH
                        ]
                   `fallthrough` notFoundText "Page not found."
 
+permanodeSubs :: Permanode -> Substitutions
+permanodeSubs (Permanode (SHA1 sha) attrs thumb prev) =
+  L.subs [("permanodeRef", L.textFill sha)
+         ,("contentRef", L.textFill $ attrs M.! "camliContent")
+         ,("has-thumbnail", justFill thumb)
+         ,("no-thumbnail", nothingFill thumb)
+         ,("has-preview", justFill prev)
+         ,("preview", L.rawTextFill $ maybe "" (T.replace "\n" "</p><p>" . HE.text) prev)]
+  where
+    justFill m = if isJust m then L.fillChildren else L.textFill ""
+    nothingFill m = if isJust m then L.textFill "" else L.fillChildren
+
 indexH :: Ctxt -> Maybe Int -> IO (Maybe Response)
 indexH ctxt page = do
-  ps <- query (_db ctxt) "SELECT sha1, attributes->>'camliContent' FROM permanodes WHERE show_in_ui = true ORDER BY sha1 DESC LIMIT 20 OFFSET ?" (Only (20 * (fromMaybe 0 page)))
+  ps <- query (_db ctxt) "SELECT sha1, attributes, thumbnail, preview FROM permanodes WHERE show_in_ui = true ORDER BY sha1 DESC LIMIT 20 OFFSET ?" (Only (20 * (fromMaybe 0 page)))
   renderWith ctxt
     (L.subs [("next-page", L.textFill $ maybe "1" (T.pack . show . (+1)) page)
-            ,("files",
-              L.mapSubs (\(sha, content) ->
-                            L.subs [("permanodeRef", L.textFill sha)
-                                   ,("fileRef", L.textFill content)])
-               ps)])
+            ,("permanodes", L.mapSubs permanodeSubs ps)])
     "index"
 
 blobH :: Ctxt -> SHA1 -> IO (Maybe Response)

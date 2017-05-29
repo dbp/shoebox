@@ -1,14 +1,20 @@
 <apply template="_base">
   <ul>
-      <files>
-        <li class="file">
-          <a class="info" href="/raw/${fileRef}"></a>
-          <a class="thumb" href="/${fileRef}">
+    <permanodes>
+      <li class="file">
+        <a class="info" href="/raw/${contentRef}"></a>
+        <a class="thumb" href="/${contentRef}">
+          <has-thumbnail>
             <img src="/${permanodeRef}/thumb"/>
-            <name/>
-          </a>
-        </li>
-      </files>
+          </has-thumbnail>
+          <has-preview>
+            <div class="preview">
+              <p><preview/></p>
+            </div>
+          </has-preview>
+        </a>
+      </li>
+    </permanodes>
     </ul>
     <a href='?page=${next-page}'>More</a>
 </apply>

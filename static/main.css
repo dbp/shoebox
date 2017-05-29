@@ -3,7 +3,6 @@ ul {
 }
 
 li.file {
-    text-align: center;
     display: inline-block;
     vertical-align: top;
     padding: 10px;
@@ -16,11 +15,21 @@ li.file {
     border: 2px solid #666;
 }
 
-
 li a.thumb {
     display: block;
     width: 128px;
     height: 128px;
+    text-decoration: none;
+    overflow: hidden;
+}
+
+li a.thumb .preview p {
+    color: black;
+    font-size: 0.8em;
+    line-height: 1.5em;
+    padding-left: 1em;
+    text-indent: -1em;
+    margin: 0;
 }
 
 li a.info {
