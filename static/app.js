@@ -24,21 +24,88 @@ window.addEventListener("drop", function(e) {
     e.preventDefault();
     e.stopPropagation();
 
-    var data = new FormData();
+    document.querySelector(".dropzone").classList.add("spinner");
 
-    var files = e.dataTransfer.files;
-    for (var i = 0; i < files.length; i++) {
-        data.append('file', files[i], files[i]["name"]);
+    // NOTE(dbp 2017-05-29): Async on readEntries() and file() make what should
+    // be very simple (just get all the files, then upload them one by one) much
+    // more complex.
+
+    // 1. List entries (files & directories), storing them in fileQueue / dirQueue respectively
+    // 2. For dirQueue, read and add files to fileQueue, dirs to dirQueue (and recur)
+    // 3. For fileQueue, get File from them and put in uploadQueue.
+    // 4. For uploadQueue, upload one by one.
+
+    var dirQueue = [];
+    var fileQueue = [];
+    var uploadQueue = [];
+
+    // 1.
+    var items = e.dataTransfer.items;
+    for (var i = 0; i < items.length; i++) {
+        var entry = items[i].webkitGetAsEntry();
+        if (entry !== null) {
+            if (entry.isDirectory) {
+                dirQueue.push(entry);
+            } else if (entry.isFile) {
+                fileQueue.push(entry);
+            }
+        }
     }
-    var request = new XMLHttpRequest();
-    request.open('POST', '/upload', true);
-    request.onreadystatechange = function() {
-	      if (request.readyState > 3 && request.status === 200) {
+
+    // 2.
+    function dirs() {
+        d = dirQueue.shift();
+        if (typeof d !== "undefined") {
+            let reader = d.createReader();
+            reader.readEntries(function(entries) { // ASYNC
+                entries.forEach(function(entry) {
+                    if (entry.isDirectory) {
+                        dirQueue.push(entry);
+                    } else if (entry.isFile) {
+                        fileQueue.push(entry);
+                    }
+                });
+                dirs();
+            });
+
+        } else {
+            files();
+        }
+    }
+    dirs();
+
+    // 3.
+    function files() {
+        f = fileQueue.shift();
+        if (typeof f !== "undefined") {
+            f.file(function(file) { // ASYNC
+                uploadQueue.push(file);
+                files();
+            });
+        } else {
+            console.log(uploadQueue);
+            upload();
+        }
+    }
+
+    // 4.
+    function upload() {
+        f = uploadQueue.shift();
+        if (typeof f !== "undefined") {
+            var data = new FormData();
+            data.append('file', f, f.name);
+            var request = new XMLHttpRequest();
+            request.open('POST', '/upload', true);
+            request.onreadystatechange = function() { // ASYNC
+	              if (request.readyState > 3 && request.status === 200) {
+                    upload();
+                }
+	          };
+            request.send(data);
+        } else {
             window.location.reload(true);
         }
-	  };
-    request.send(data);
-    document.querySelector(".dropzone").classList.add("spinner");
+    }
 });
 window.addEventListener("dragover", function(e) {
     e.preventDefault();

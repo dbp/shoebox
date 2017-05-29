@@ -38,6 +38,10 @@ process store key conn f =
     "application/zip" -> unzipper store key conn f
     typ -> case takeExtension (T.unpack $ fileName f) of
              ".mbox" -> emailextract store key conn f
+             ".jpg" -> addFile conn key store f
+             ".jpeg" -> addFile conn key store f
+             ".png" -> addFile conn key store f
+             ".zip" -> unzipper store key conn f
              ext -> log' $ "Don't know how to process files ending in " <> T.pack ext <> " of type " <> typ <> "."
 
 
