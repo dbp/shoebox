@@ -51,6 +51,9 @@ document.addEventListener('keydown', function(e) {
             window.setTimeout(function () {
                 window.history.go(-1);
             }, 0);
+        } else {
+            document.querySelector("input").blur();
+            document.querySelector("input").value = "";
         }
     }
 });
