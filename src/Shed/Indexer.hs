@@ -13,6 +13,7 @@ import           Data.Aeson.Types                     (FromJSON (..),
 import           Data.Binary.Builder                  (Builder)
 import qualified Data.Binary.Builder                  as Builder
 import           Data.ByteString                      (ByteString)
+import qualified Data.ByteString                      as B
 import qualified Data.ByteString.Lazy                 as BL
 import           Data.ByteString.Unsafe               (unsafeUseAsCStringLen)
 import qualified Data.Map                             as M
@@ -57,10 +58,13 @@ instance FromRow Permanode where
 
 data Part = Part SHA1 Int deriving Show
 
+data Header = Header Text Text deriving Show
+
 data Blob = Bytes BL.ByteString
           | PermanodeBlob SHA1 Text
           | SetAttribute SHA1 UTCTime SHA1 Text Text
           | FileBlob Text [Part]
+          | EmailBlob Text [Header] [Part]
           deriving Show
 
 readBlob' :: BlobServer a => a -> SHA1 -> IO (Maybe Blob)
@@ -81,11 +85,20 @@ instance ToJSON SHA1 where
 instance FromJSON Part where
   parseJSON (Object v) = Part <$> v .: "blobRef"
                               <*> v .: "size"
-  parseJSON invalid = typeMismatch "SHA1" invalid
+  parseJSON invalid = typeMismatch "Part" invalid
 
 instance ToJSON Part where
   toJSON (Part ref size) = object ["blobRef" .= ref
                                   ,"size" .= size]
+
+instance FromJSON Header where
+  parseJSON (Object v) = Header <$> v .: "name"
+                                <*> v .: "value"
+  parseJSON invalid = typeMismatch "Header" invalid
+
+instance ToJSON Header where
+  toJSON (Header name value) = object ["name" .= name
+                                      ,"value" .= value]
 
 instance FromJSON Blob where
   parseJSON (Object v) = (do t <- v .: "camliType"
@@ -102,13 +115,20 @@ instance FromJSON Blob where
                                             <*> v .: "permaNode"
                                             <*> v .: "attribute"
                                             <*> v .: "value"
-                               else fail "not a set-attribute")
+                               else fail "Not a set-attribute")
                          <|>
                          (do t <- v .: "camliType"
                              if t == ("file" :: Text) then
                                FileBlob <$> v .: "fileName"
-                                    <*> v .: "parts"
-                               else fail "not a set-attribute")
+                                        <*> v .: "parts"
+                               else fail "Not a file")
+                         <|>
+                         (do t <- v .: "camliType"
+                             if t == ("email" :: Text) then
+                               EmailBlob <$> v .: "from"
+                                         <*> v .: "headers"
+                                         <*> v .: "body"
+                             else fail "Not an email")
   parseJSON invalid    = typeMismatch "Blob" invalid
 
 
@@ -132,6 +152,12 @@ instance ToJSON Blob where
            ,"camliType" .= ("file" :: Text)
            ,"fileName" .= name
            ,"parts" .= parts]
+  toJSON (EmailBlob from headers body) =
+    object ["camliVersion" .= (1 :: Int)
+           ,"camliType" .= ("email" :: Text)
+           ,"from" .= from
+           ,"headers" .= headers
+           ,"bodyRef" .= body]
 
 
 blobToSignedJson :: Key -> Blob -> IO ByteString
@@ -173,7 +199,12 @@ indexBlob store conn (SHA1 sha) (FileBlob _ parts) = do
              "image/jpeg" -> mkThumb
              "image/png"  -> mkThumb
       Just jpg -> void $ execute conn "UPDATE permanodes SET thumbnail = ? WHERE attributes->'camliContent' = ?" (Binary jpg, String sha)
-
+indexBlob store conn (SHA1 sha) (EmailBlob from headers body) = do
+  Just (Only n) <- listToMaybe <$> query conn "SELECT COUNT(*) FROM permanodes WHERE attributes->'camliContent' = ?" (Only (String sha))
+  when (n > (0 :: Int)) $ do
+    execute conn "UPDATE permanodes SET show_in_ui = true WHERE attributes->'camliContent' = ?" (Only (String sha))
+    jpg <- B.readFile "static/mail.png"
+    void $ execute conn "UPDATE permanodes SET thumbnail = ? WHERE attributes->'camliContent' = ?" (Binary jpg, String sha)
 indexBlob _ _ _ (Bytes _) = return ()
 
 index :: BlobServer a => a -> IO ()
