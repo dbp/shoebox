@@ -17,10 +17,12 @@ import qualified Data.Map                    as M
 import           Data.Maybe                  (catMaybes, fromMaybe, isJust,
                                               listToMaybe)
 import           Data.Monoid                 ((<>))
+import           Data.String                 (fromString)
 import           Data.Text                   (Text)
 import qualified Data.Text                   as T
 import qualified Data.Text.Encoding          as T
-import           Database.PostgreSQL.Simple  (Connection, connectPostgreSQL)
+import qualified Database.PostgreSQL.Simple  as PG
+import qualified Database.SQLite.Simple      as SQLITE
 import qualified HTMLEntities.Text           as HE
 import           Magic                       (MagicFlag (MagicMimeType),
                                               magicCString, magicLoadDefault,
@@ -46,6 +48,7 @@ import           Shed.Importers
 import           Shed.Indexer
 import           Shed.IndexServer
 import           Shed.IndexServer.Postgresql
+import           Shed.IndexServer.Sqlite
 import           Shed.Signing
 import           Shed.Types
 
@@ -78,16 +81,30 @@ renderWith ctxt subs tpl =
 initializer :: IO Ctxt
 initializer = do
   lib <- L.loadTemplates "templates" L.defaultOverrides
-  db <- T.pack . fromMaybe "shed" <$> lookupEnv "INDEX"
-  conn <- connectPostgreSQL $ T.encodeUtf8 $ "dbname='" <> db <> "'"
   pth <- T.pack . fromMaybe "." <$> (lookupEnv "BLOBS")
   let store = FileStore pth
+  db' <- fmap T.pack <$> lookupEnv "INDEX"
+  (serv, nm) <- case db' of
+                  Just db -> do c <- PG.connectPostgreSQL $ T.encodeUtf8 $ "dbname='" <> db <> "'"
+                                return (AnIndexServer (PG c), db)
+                  Nothing -> do sql <- readFile "migrations/sqlite.sql"
+                                c <- SQLITE.open ":memory:"
+                                SQLITE.execute_ c (fromString sql)
+                                let serv = AnIndexServer (SL c)
+                                log' "Running indexer to populate :memory: index."
+                                -- NOTE(dbp 2017-05-29): Run many times because
+                                -- we need permanodes in DB before files stored
+                                -- in them are indexed
+                                index store serv
+                                index store serv
+                                index store serv
+                                return (serv, ":memory:")
   keyid <- T.pack <$> getEnv "KEY"
   keyblob <- getPubKey keyid
   ref <- writeBlob store keyblob
   let key = Key keyid ref
-  log' $ "Opening up the shed (" <> pth <> " & " <> db <> ")..."
-  return (Ctxt defaultFnRequest store (AnIndexServer $ PG conn) lib key)
+  log' $ "Opening up the shed (" <> pth <> " & " <> nm <> ")..."
+  return (Ctxt defaultFnRequest store serv lib key)
 
 main :: IO ()
 main = withStderrLogging $

@@ -126,6 +126,7 @@ instance ToJSON Blob where
            ,"camliSigner" .= signer
            ,"claimDate" .= date
            ,"claimType" .= ("set-attribute" :: Text)
+           ,"permaNode" .= permanode
            ,"attribute" .= attr
            ,"value" .= val]
   toJSON (FileBlob name parts) =
@@ -180,6 +181,7 @@ indexBlob store (AnIndexServer serv) sha (FileBlob name parts) = do
            case mime of
              "image/jpeg" -> mkThumb
              "image/png"  -> mkThumb
+             _            -> return ()
       Just jpg -> setPermanodeThumbnail serv sha jpg
 indexBlob store (AnIndexServer serv) sha (EmailBlob from headers body) = do
   exists <- permanodeHasContent serv sha
@@ -196,6 +198,7 @@ indexBlob store (AnIndexServer serv) sha (EmailBlob from headers body) = do
                <> (maybe "" (\x -> "Date: " <> x <> "\n") (getHeader headers "Date"))
     setPermanodePreview serv sha preview
 indexBlob _ _ _ (Bytes _) = return ()
+
 
 index :: BlobServer a => a -> AnIndexServer -> IO ()
 index a s = do
