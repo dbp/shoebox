@@ -104,3 +104,15 @@ form input {
     width: 100%;
     text-align: center;
 }
+
+h3 {
+    text-align: center;
+    margin: 0;
+}
+
+img.file {
+    max-width: 96%;
+    padding: 2%;
+    margin: 0 auto;
+    display: block;
+}

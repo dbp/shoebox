@@ -1,7 +1,4 @@
 <apply template="_base">
-  <form action="/search">
-    <input name="q" type="text" placeholder="SEARCH..." value="${q}"/>
-  </form>
   <ul>
     <permanodes>
       <li class="file">
@@ -18,6 +15,8 @@
         </a>
       </li>
     </permanodes>
-    </ul>
+  </ul>
+  <has-more>
     <a href='?page=${next-page}'>More</a>
+  </has-more>
 </apply>

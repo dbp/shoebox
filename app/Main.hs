@@ -92,6 +92,7 @@ site ctxt = route ctxt [ end // param "page"          ==> indexH
                        , path "static" ==> staticServe "static"
                        , segment // path "thumb" ==> thumbH
                        , segment ==> smartBlobH
+                       , path "file" // segment ==> fileH
                        , path "raw" // segment ==> blobH
                        , path "upload" // file "file" !=> uploadH
                        , path "search" // param "q" ==> searchH
@@ -114,7 +115,8 @@ indexH :: Ctxt -> Maybe Int -> IO (Maybe Response)
 indexH ctxt page = do
   ps <- query (_db ctxt) "SELECT sha1, attributes, thumbnail, preview FROM permanodes WHERE show_in_ui = true ORDER BY sha1 DESC LIMIT 20 OFFSET ?" (Only (20 * (fromMaybe 0 page)))
   renderWith ctxt
-    (L.subs [("next-page", L.textFill $ maybe "1" (T.pack . show . (+1)) page)
+    (L.subs [("has-more", L.fillChildren)
+            ,("next-page", L.textFill $ maybe "1" (T.pack . show . (+1)) page)
             ,("permanodes", L.mapSubs permanodeSubs ps)
             ,("q", L.textFill "")])
     "index"
@@ -123,11 +125,12 @@ searchH :: Ctxt -> Text -> IO (Maybe Response)
 searchH ctxt q = do
   if T.strip q == "" then redirect "/" else do
     ps <- search (_db ctxt) q
-    renderWith ctxt
-      (L.subs [("next-page", L.textFill "")
-              ,("q", L.textFill q)
-              ,("permanodes", L.mapSubs permanodeSubs ps)])
-      "index"
+    if length ps == 0 then redirect "/" else
+      renderWith ctxt
+        (L.subs [("has-more", L.textFill "")
+                ,("q", L.textFill q)
+                ,("permanodes", L.mapSubs permanodeSubs ps)])
+        "index"
 
 
 blobH :: Ctxt -> SHA1 -> IO (Maybe Response)
@@ -219,9 +222,9 @@ smartBlobH ctxt sha@(SHA1 s) =
        Nothing  -> return Nothing
        Just (Bytes bs) -> return $ Just $ responseLBS status200 [] bs
        Just (FileBlob name ps) -> do
-         let content = maybe [] (\c -> [(hContentType, c)]) $ M.lookup (takeExtension $ T.unpack name) mimeMap
-         builder <- readFileBytes (_store ctxt) ps
-         return $ Just $ responseBuilder status200 content builder
+         renderWith ctxt (L.subs [("name", L.textFill name)
+                                 ,("fileRef", L.textFill s)])
+           "file"
        Just (EmailBlob from headers body) -> do
          b <- readFileBytes (_store ctxt) body
          let body = T.decodeUtf8 $ BL.toStrict $ Builder.toLazyByteString b
@@ -233,6 +236,16 @@ smartBlobH ctxt sha@(SHA1 s) =
                       ,("body-content", L.textFill body)])
            "email"
   where getHeader hs h = let (Header _ v) = fromMaybe (Header "" "") $ listToMaybe $ filter (\(Header n v) -> n == h) hs in v
+
+fileH :: Ctxt -> SHA1 -> IO (Maybe Response)
+fileH ctxt sha =
+  do res' <- readBlob' (_store ctxt) sha
+     case res' of
+       Just (FileBlob name ps) -> do
+         let content = maybe [] (\c -> [(hContentType, c)]) $ M.lookup (takeExtension $ T.unpack name) mimeMap
+         builder <- readFileBytes (_store ctxt) ps
+         return $ Just $ responseBuilder status200 content builder
+       _ -> return Nothing
 
 uploadH :: Ctxt -> File -> IO (Maybe Response)
 uploadH ctxt f = do log' $ "Uploading " <> fileName f <> "..."

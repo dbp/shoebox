@@ -44,3 +44,13 @@ window.addEventListener("dragover", function(e) {
     e.preventDefault();
     e.stopPropagation();
 });
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === "Escape") {
+        if (window.location.href !== "/") {
+            window.setTimeout(function () {
+                window.location.href = "/";
+            }, 0);
+        }
+    }
+});
