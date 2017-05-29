@@ -47,9 +47,9 @@ window.addEventListener("dragover", function(e) {
 
 document.addEventListener('keydown', function(e) {
     if (e.key === "Escape") {
-        if (window.location.href !== "/") {
+        if (window.location.pathname !== "/") {
             window.setTimeout(function () {
-                window.location.href = "/";
+                window.history.go(-1);
             }, 0);
         }
     }
