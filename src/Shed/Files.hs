@@ -48,12 +48,14 @@ addFile conn key store file = do
   let parts = map (uncurry Part) refs
   let fileblob = FileBlob (fileName file) parts
   let fileblob' = BL.toStrict $ encodePretty fileblob
-  (SHA1 fref) <- writeBlob store fileblob'
-  (pref, permablob) <- addPermanode key store
-  (cref, claimblob) <- setAttribute key store pref "camliContent" fref
-  indexBlob store conn pref permablob
-  indexBlob store conn cref claimblob
-  indexBlob store conn (SHA1 fref) fileblob
+  exists <- statBlob store fileblob'
+  if exists then return () else do
+    (SHA1 fref) <- writeBlob store fileblob'
+    (pref, permablob) <- addPermanode key store
+    (cref, claimblob) <- setAttribute key store pref "camliContent" fref
+    indexBlob store conn pref permablob
+    indexBlob store conn cref claimblob
+    indexBlob store conn (SHA1 fref) fileblob
 
 splitEvery :: Int -> ByteString -> [ByteString]
 splitEvery n bs = if B.length bs <= n then [bs] else

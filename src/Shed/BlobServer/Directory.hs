@@ -18,20 +18,23 @@ import           Shed.Types
 
 data FileStore = FileStore Text
 
+getDir :: Text -> Text -> FilePath
+getDir dir name = T.unpack $ dir <> "/sha1/" <> T.take 2 (T.drop 5 name) <> "/" <> T.take 2 (T.drop 7 name) <> "/"
+
 instance BlobServer FileStore where
  writeBlob (FileStore dir) dat = do
    (SHA1 name) <- getBlobName dat
-   let holder = T.unpack $ dir <> "/sha1/" <> T.take 2 (T.drop 5 name) <> "/" <> T.take 2 (T.drop 7 name) <> "/"
+   let holder = getDir dir name
    createDirectoryIfMissing True holder
    let filename = holder <> T.unpack name <> ".dat"
    BS.writeFile filename dat
    return (SHA1 name)
 
  readBlob (FileStore dir) (SHA1 t) = if not ("sha1-" `T.isPrefixOf` t) then error $ T.unpack $ "SHA1 does not start with 'sha1-': " <> t else
-  do let filename = dir <> "/sha1/" <> (T.take 2 (T.drop 5 t)) <> "/" <> (T.take 2 (T.drop 7 t)) <> "/" <> t <> ".dat"
-     ex <- doesFileExist $ T.unpack filename
+  do let filename = getDir dir t <> T.unpack t <> ".dat"
+     ex <- doesFileExist filename
      if ex
-       then Just <$> BL.readFile (T.unpack filename)
+       then Just <$> BL.readFile filename
        else return Nothing
 
  enumerateBlobs (FileStore dir) f = enum [dir <> "/sha1"] 0

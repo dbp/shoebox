@@ -63,11 +63,13 @@ emailextract store key conn f = do
                                        (map (uncurry Header . (TL.toStrict *** TL.toStrict)) (headers m))
                                        (map (uncurry Part) brefs)
                   let emailblob = BL.toStrict $ encodePretty email
-                  (SHA1 eref) <- writeBlob store emailblob
-                  (pref, permablob) <- addPermanode key store
-                  (cref, claimblob) <- setAttribute key store pref "camliContent" eref
-                  indexBlob store conn pref permablob
-                  indexBlob store conn cref claimblob
-                  indexBlob store conn (SHA1 eref) email
+                  exists <- statBlob store emailblob
+                  if exists then return () else do
+                    (SHA1 eref) <- writeBlob store emailblob
+                    (pref, permablob) <- addPermanode key store
+                    (cref, claimblob) <- setAttribute key store pref "camliContent" eref
+                    indexBlob store conn pref permablob
+                    indexBlob store conn cref claimblob
+                    indexBlob store conn (SHA1 eref) email
 
         ) messages

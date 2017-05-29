@@ -6,6 +6,7 @@ import           Data.ByteString         (ByteString)
 import qualified Data.ByteString         as BS
 import qualified Data.ByteString.Builder as Builder
 import qualified Data.ByteString.Lazy    as BL
+import           Data.Maybe              (isJust)
 import           Data.Monoid
 import qualified Data.Text.Encoding      as T
 
@@ -18,6 +19,10 @@ getBlobName dat = do
   return (SHA1 $ "sha1-" <> chars)
 
 class BlobServer a where
+  statBlob :: a -> ByteString -> IO Bool
+  statBlob store dat = do
+    sha <- getBlobName dat
+    isJust <$> readBlob store sha
   writeBlob :: a -> ByteString -> IO SHA1
   readBlob :: a -> SHA1 -> IO (Maybe BL.ByteString)
   enumerateBlobs :: a -> (SHA1 -> BL.ByteString -> IO ()) -> IO ()
