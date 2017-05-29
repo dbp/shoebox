@@ -157,7 +157,7 @@ instance ToJSON Blob where
            ,"camliType" .= ("email" :: Text)
            ,"from" .= from
            ,"headers" .= headers
-           ,"bodyRef" .= body]
+           ,"body" .= body]
 
 
 blobToSignedJson :: Key -> Blob -> IO ByteString

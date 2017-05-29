@@ -1,11 +1,5 @@
-<!doctype html>
-<html>
-  <head>
-    <link rel='stylesheet' href='/static/main.css'/>
-  </head>
-  <body>
-    <div style="visibility:hidden; opacity:0" class="dropzone"></div>
-    <ul>
+<apply template="_base">
+  <ul>
       <files>
         <li class="file">
           <a class="info" href="/raw/${fileRef}"></a>
@@ -17,6 +11,4 @@
       </files>
     </ul>
     <a href='?page=${next-page}'>More</a>
-  </body>
-  <script type="text/javascript" src="/static/app.js"></script>
-</html>
+</apply>

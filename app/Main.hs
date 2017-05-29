@@ -187,24 +187,6 @@ thumbH ctxt sha =
        Nothing -> renderIcon
        Just (Only (Binary jpg)) -> return $ Just $ responseBuilder status200 [(hContentType, "image/jpeg")] (Builder.fromByteString jpg)
 
--- thumbH :: Ctxt -> SHA1 -> IO (Maybe Response)
--- thumbH ctxt sha@(SHA1 s) =
---   do log' $ "Thumbnail of " <> s
---      res' <- readBlob' (_store ctxt) sha
---      case res' of
---        Nothing  -> return Nothing
---        Just (Bytes bs) -> renderIcon
---        Just (FileBlob name ps) -> do
---          let content = maybe [] (\c -> [(hContentType, c)]) $ M.lookup (takeExtension $ T.unpack name) mimeMap
---          builder <- readFileBytes (_store ctxt) ps
---          let dat = BL.toStrict $ Builder.toLazyByteString builder
---          res <- getExifThumbnail dat
---          case res of
---            Nothing -> renderIcon
---            Just jpg ->
---              return $ Just $ responseBuilder status200 [(hContentType, "image/jpeg")] (Builder.fromByteString jpg)
-
-
 
 smartBlobH :: Ctxt -> SHA1 -> IO (Maybe Response)
 smartBlobH ctxt sha@(SHA1 s) =
@@ -216,6 +198,17 @@ smartBlobH ctxt sha@(SHA1 s) =
          let content = maybe [] (\c -> [(hContentType, c)]) $ M.lookup (takeExtension $ T.unpack name) mimeMap
          builder <- readFileBytes (_store ctxt) ps
          return $ Just $ responseBuilder status200 content builder
+       Just (EmailBlob from headers body) -> do
+         b <- readFileBytes (_store ctxt) body
+         let body = T.decodeUtf8 $ BL.toStrict $ Builder.toLazyByteString b
+         renderWith ctxt (L.subs
+                     [("from", L.textFill from)
+                      ,("subject", L.textFill $ getHeader headers "Subject")
+                      ,("message-id", L.textFill $ getHeader headers "Message-ID")
+                      ,("date", L.textFill $ getHeader headers "Date")
+                      ,("body-content", L.textFill body)])
+           "email"
+  where getHeader hs h = let (Header _ v) = fromMaybe (Header "" "") $ listToMaybe $ filter (\(Header n v) -> n == h) hs in v
 
 uploadH :: Ctxt -> File -> IO (Maybe Response)
 uploadH ctxt f = do log' $ "Uploading " <> fileName f <> "..."
