@@ -38,10 +38,7 @@ window.addEventListener("drop", function(e) {
         }
 	  };
     request.send(data);
-
-
-    document.querySelector(".dropzone").style.visibility = "hidden";
-    document.querySelector(".dropzone").style.opacity = 0;
+    document.querySelector(".dropzone").classList.add("spinner");
 });
 window.addEventListener("dragover", function(e) {
     e.preventDefault();
