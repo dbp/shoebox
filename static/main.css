@@ -60,7 +60,7 @@ li img {
     max-height: 128px;
 }
 
-div.dropzone {
+.dropzone {
     /* positions to point 0,0 - required for z-index */
     position: fixed; top: 0; left: 0;
     /* above all elements, even if z-index is used elsewhere
@@ -75,6 +75,29 @@ div.dropzone {
     transition: visibility 175ms, opacity 175ms;
 }
 
+.dropzone .queue {
+    position: absolute;
+    top: 30%;
+    left: 50%;
+    width: 200px;
+    max-height: 65%;
+    overflow: hidden;
+    margin-left: -100px;
+    padding: 0;
+    border-radius: 5px;
+    background-color: #efefef;
+}
+
+.dropzone .queue li {
+    color: #999;
+    font-size: 1.1em;
+    padding: 10px;
+    text-align: center;
+}
+.dropzone .queue li.done {
+    color: #07d;
+}
+
 @keyframes spinner {
     to {transform: rotate(360deg);}
 }
@@ -83,7 +106,7 @@ div.dropzone {
     content: '';
     box-sizing: border-box;
     position: absolute;
-    top: 50%;
+    top: 25%;
     left: 50%;
     width: 50px;
     height: 50px;

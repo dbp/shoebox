@@ -9,6 +9,7 @@ import           Data.Aeson.Encode.Pretty   (encodePretty)
 import qualified Data.ByteString            as B
 import qualified Data.ByteString.Lazy       as BL
 import           Data.ByteString.Unsafe     (unsafeUseAsCStringLen)
+import           Data.Char                  (toLower)
 import qualified Data.Conduit.Binary        as CB
 import           Data.MBox                  (Message (..), parseMBox)
 import           Data.Monoid                ((<>))
@@ -36,7 +37,7 @@ process store key conn f =
     "image/jpeg" -> addFile conn key store f
     "image/png" -> addFile conn key store f
     "application/zip" -> unzipper store key conn f
-    typ -> case takeExtension (T.unpack $ fileName f) of
+    typ -> case map toLower $ takeExtension (T.unpack $ fileName f) of
              ".mbox" -> emailextract store key conn f
              ".jpg" -> addFile conn key store f
              ".jpeg" -> addFile conn key store f

@@ -113,7 +113,7 @@ permanodeSubs (Permanode (SHA1 sha) attrs thumb prev) =
 
 indexH :: Ctxt -> Maybe Int -> IO (Maybe Response)
 indexH ctxt page = do
-  ps <- query (_db ctxt) "SELECT sha1, attributes, thumbnail, preview FROM permanodes WHERE show_in_ui = true ORDER BY sha1 DESC LIMIT 20 OFFSET ?" (Only (20 * (fromMaybe 0 page)))
+  ps <- query (_db ctxt) "SELECT sha1, attributes, thumbnail, preview FROM permanodes WHERE show_in_ui = true ORDER BY sha1 DESC LIMIT 100 OFFSET ?" (Only (100 * (fromMaybe 0 page)))
   renderWith ctxt
     (L.subs [("has-more", L.fillChildren)
             ,("next-page", L.textFill $ maybe "1" (T.pack . show . (+1)) page)

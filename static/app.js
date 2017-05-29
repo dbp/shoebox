@@ -83,7 +83,11 @@ window.addEventListener("drop", function(e) {
                 files();
             });
         } else {
-            console.log(uploadQueue);
+            uploadQueue.forEach(function (f) {
+                var e = document.createElement("li");
+                e.innerHTML = f.name;
+                document.querySelector(".dropzone .queue").appendChild(e);
+            });
             upload();
         }
     }
@@ -98,6 +102,14 @@ window.addEventListener("drop", function(e) {
             request.open('POST', '/upload', true);
             request.onreadystatechange = function() { // ASYNC
 	              if (request.readyState > 3 && request.status === 200) {
+                    document.querySelectorAll(".dropzone .queue li").forEach(function (e) {
+                        if (e.innerHTML === f.name) {
+                            e.classList.add("done");
+                            window.setTimeout(function () {
+                                e.remove();
+                            }, 500);
+                        }
+                    });
                     upload();
                 }
 	          };
