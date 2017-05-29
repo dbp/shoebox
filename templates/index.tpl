@@ -1,4 +1,7 @@
 <apply template="_base">
+  <form action="/search">
+    <input name="q" type="text" placeholder="SEARCH..." value="${q}"/>
+  </form>
   <ul>
     <permanodes>
       <li class="file">

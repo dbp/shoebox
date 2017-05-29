@@ -94,3 +94,13 @@ div.dropzone {
     border-top-color: #07d;
     animation: spinner .6s linear infinite;
 }
+
+form {
+    padding: 20px 20%;
+    text-align: center;
+}
+form input {
+    font-size: 2em;
+    width: 100%;
+    text-align: center;
+}

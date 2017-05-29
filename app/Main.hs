@@ -13,6 +13,7 @@ import qualified Data.Map                   as M
 import           Data.Maybe                 (catMaybes, fromMaybe, isJust,
                                              listToMaybe)
 import           Data.Monoid                ((<>))
+import           Data.Text                  (Text)
 import qualified Data.Text                  as T
 import qualified Data.Text.Encoding         as T
 import           Database.PostgreSQL.Simple (Binary (..), Connection, Only (..),
@@ -51,10 +52,10 @@ instance RequestContext Ctxt where
   getRequest = _req
   setRequest c r = c { _req = r }
 
-render :: Ctxt -> T.Text -> IO (Maybe Response)
+render :: Ctxt -> Text -> IO (Maybe Response)
 render ctxt = renderWith ctxt mempty
 
-renderWith :: Ctxt -> Substitutions -> T.Text -> IO (Maybe Response)
+renderWith :: Ctxt -> Substitutions -> Text -> IO (Maybe Response)
 renderWith ctxt subs tpl =
   do t <- L.renderWith (_library ctxt) subs () (T.splitOn "/" tpl)
      case t of
@@ -93,6 +94,7 @@ site ctxt = route ctxt [ end // param "page"          ==> indexH
                        , segment ==> smartBlobH
                        , path "raw" // segment ==> blobH
                        , path "upload" // file "file" !=> uploadH
+                       , path "search" // param "q" ==> searchH
                        ]
                   `fallthrough` notFoundText "Page not found."
 
@@ -113,8 +115,20 @@ indexH ctxt page = do
   ps <- query (_db ctxt) "SELECT sha1, attributes, thumbnail, preview FROM permanodes WHERE show_in_ui = true ORDER BY sha1 DESC LIMIT 20 OFFSET ?" (Only (20 * (fromMaybe 0 page)))
   renderWith ctxt
     (L.subs [("next-page", L.textFill $ maybe "1" (T.pack . show . (+1)) page)
-            ,("permanodes", L.mapSubs permanodeSubs ps)])
+            ,("permanodes", L.mapSubs permanodeSubs ps)
+            ,("q", L.textFill "")])
     "index"
+
+searchH :: Ctxt -> Text -> IO (Maybe Response)
+searchH ctxt q = do
+  if T.strip q == "" then redirect "/" else do
+    ps <- search (_db ctxt) q
+    renderWith ctxt
+      (L.subs [("next-page", L.textFill "")
+              ,("q", L.textFill q)
+              ,("permanodes", L.mapSubs permanodeSubs ps)])
+      "index"
+
 
 blobH :: Ctxt -> SHA1 -> IO (Maybe Response)
 blobH ctxt sha@(SHA1 s) =

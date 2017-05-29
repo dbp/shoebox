@@ -3,6 +3,7 @@
 module Shed.Indexer where
 
 import           Control.Applicative                  ((<|>))
+import           Control.Logging                      (log')
 import           Control.Monad                        (void, when)
 import           Data.Aeson                           (decode)
 import           Data.Aeson.Encode.Pretty             (encodePretty)
@@ -17,9 +18,12 @@ import qualified Data.ByteString                      as B
 import qualified Data.ByteString.Lazy                 as BL
 import           Data.ByteString.Unsafe               (unsafeUseAsCStringLen)
 import qualified Data.Map                             as M
-import           Data.Maybe                           (catMaybes, listToMaybe)
+import           Data.Maybe                           (catMaybes, fromMaybe,
+                                                       listToMaybe)
 import           Data.Monoid                          ((<>))
 import           Data.Text                            (Text)
+import qualified Data.Text                            as T
+import qualified Data.Text.Encoding                   as T
 import           Data.Time.Clock
 import           Database.PostgreSQL.Simple
 import           Database.PostgreSQL.Simple.FromField (FromField (..),
@@ -41,7 +45,7 @@ data Permanode = Permanode { sha1       :: SHA1
                            , attributes :: M.Map Text Text
                            , thumbnail  :: Maybe ByteString
                            , preview    :: Maybe Text
-                           }
+                           } deriving Show
 
 instance FromField SHA1 where
   fromField f b = SHA1 <$> fromField f b
@@ -183,10 +187,11 @@ indexBlob store conn (SHA1 sha) (PermanodeBlob _ _) =
   void $ execute conn "INSERT INTO permanodes (sha1) VALUES (?) ON CONFLICT DO NOTHING" (Only sha)
 indexBlob store conn (SHA1 sha) (SetAttribute s d p a v) =
   void $ execute conn "UPDATE permanodes SET attributes = jsonb_set(attributes, ARRAY[?], ?) WHERE sha1 = ?" (a,String v,p)
-indexBlob store conn (SHA1 sha) (FileBlob _ parts) = do
+indexBlob store conn (SHA1 sha) (FileBlob name parts) = do
   Just (Only n) <- listToMaybe <$> query conn "SELECT COUNT(*) FROM permanodes WHERE attributes->'camliContent' = ?" (Only (String sha))
   when (n > (0 :: Int)) $ do
     execute conn "UPDATE permanodes SET show_in_ui = true WHERE attributes->'camliContent' = ?" (Only (String sha))
+    setSearchHigh conn (SHA1 sha) name
     builder <- readFileBytes store parts
     let dat = BL.toStrict $ Builder.toLazyByteString builder
     res <- getExifThumbnail dat
@@ -208,6 +213,12 @@ indexBlob store conn (SHA1 sha) (EmailBlob from headers body) = do
   Just (Only n) <- listToMaybe <$> query conn "SELECT COUNT(*) FROM permanodes WHERE attributes->'camliContent' = ?" (Only (String sha))
   when (n > (0 :: Int)) $ do
     execute conn "UPDATE permanodes SET show_in_ui = true WHERE attributes->'camliContent' = ?" (Only (String sha))
+    setSearchHigh conn (SHA1 sha) $
+      T.concat [fromMaybe "" $ getHeader headers "From", "\n"
+               ,fromMaybe "" $ getHeader headers "Subject", "\n"]
+    b <- readFileBytes store body
+    let body' = T.decodeUtf8 $ BL.toStrict $ Builder.toLazyByteString b
+    setSearchLow conn (SHA1 sha) body'
     let preview = (maybe "" (<> "\n") (getHeader headers "Subject"))
                <> (maybe "" (\x -> "From: " <> x <> "\n") (getHeader headers "From"))
                <> (maybe "" (\x -> "Date: " <> x <> "\n") (getHeader headers "Date"))
@@ -231,3 +242,13 @@ wipe = do
   conn <- connectPostgreSQL "dbname=shed"
   void $ execute_ conn "delete from permanodes"
 
+setSearchHigh :: Connection -> SHA1 -> Text -> IO ()
+setSearchHigh conn (SHA1 sha) text =
+  void $ execute conn "UPDATE permanodes SET search_high = ? WHERE attributes->'camliContent' = ?" (text, String sha)
+
+setSearchLow :: Connection -> SHA1 -> Text -> IO ()
+setSearchLow conn (SHA1 sha) text =
+  void $ execute conn "UPDATE permanodes SET search_low = ? WHERE attributes->'camliContent' = ?" (text, String sha)
+
+search :: Connection -> Text -> IO [Permanode]
+search conn t = query conn "SELECT sha1, attributes, thumbnail, preview FROM permanodes WHERE (setweight(to_tsvector(permanodes.search_high),'A') || setweight(to_tsvector(permanodes.search_low), 'B')) @@ to_tsquery('english', ?) ORDER BY ts_rank((setweight(to_tsvector(permanodes.search_high),'A') || setweight(to_tsvector(permanodes.search_low), 'B')), to_tsquery('english', ?)) DESC" (t,t)
