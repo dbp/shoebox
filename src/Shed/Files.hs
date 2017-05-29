@@ -17,8 +17,8 @@ import           Web.Fn                     (File (..))
 
 import           Shed.BlobServer
 import           Shed.Indexer
+import           Shed.IndexServer
 import           Shed.Types
-
 
 chunkSize :: Int
 chunkSize = 1000000
@@ -42,8 +42,8 @@ setAttribute key store pref name value = do
   claim <- blobToSignedJson key claimblob
   (, claimblob) <$> writeBlob store claim
 
-addFile :: BlobServer a => Connection -> Key -> a -> File -> IO ()
-addFile conn key store file = do
+addFile :: BlobServer a => a -> AnIndexServer -> Key -> File -> IO ()
+addFile store serv key file = do
   refs <- addChunks store (BL.toStrict $ fileContent file)
   let parts = map (uncurry Part) refs
   let fileblob = FileBlob (fileName file) parts
@@ -53,9 +53,9 @@ addFile conn key store file = do
     (SHA1 fref) <- writeBlob store fileblob'
     (pref, permablob) <- addPermanode key store
     (cref, claimblob) <- setAttribute key store pref "camliContent" fref
-    indexBlob store conn pref permablob
-    indexBlob store conn cref claimblob
-    indexBlob store conn (SHA1 fref) fileblob
+    indexBlob store serv pref permablob
+    indexBlob store serv cref claimblob
+    indexBlob store serv (SHA1 fref) fileblob
 
 splitEvery :: Int -> ByteString -> [ByteString]
 splitEvery n bs = if B.length bs <= n then [bs] else

@@ -24,6 +24,8 @@ library
                      , Shed.Signing
                      , Shed.Files
                      , Shed.Importers
+                     , Shed.IndexServer
+                     , Shed.IndexServer.Postgresql
   c-sources:           src/Shed/Images.c
 
   cc-options:          -Wall -O2

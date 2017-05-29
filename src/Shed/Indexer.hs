@@ -2,65 +2,37 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Shed.Indexer where
 
-import           Control.Applicative                  ((<|>))
-import           Control.Logging                      (log')
-import           Control.Monad                        (void, when)
-import           Data.Aeson                           (decode)
-import           Data.Aeson.Encode.Pretty             (encodePretty)
-import           Data.Aeson.Types                     (FromJSON (..),
-                                                       ToJSON (..), Value (..),
-                                                       object, typeMismatch,
-                                                       (.:), (.=))
-import           Data.Binary.Builder                  (Builder)
-import qualified Data.Binary.Builder                  as Builder
-import           Data.ByteString                      (ByteString)
-import qualified Data.ByteString                      as B
-import qualified Data.ByteString.Lazy                 as BL
-import           Data.ByteString.Unsafe               (unsafeUseAsCStringLen)
-import qualified Data.Map                             as M
-import           Data.Maybe                           (catMaybes, fromMaybe,
-                                                       listToMaybe)
-import           Data.Monoid                          ((<>))
-import           Data.Text                            (Text)
-import qualified Data.Text                            as T
-import qualified Data.Text.Encoding                   as T
+import           Control.Applicative      ((<|>))
+import           Control.Logging          (log')
+import           Control.Monad            (void, when)
+import           Data.Aeson               (decode)
+import           Data.Aeson.Encode.Pretty (encodePretty)
+import           Data.Aeson.Types         (FromJSON (..), ToJSON (..),
+                                           Value (..), object, typeMismatch,
+                                           (.:), (.=))
+import           Data.Binary.Builder      (Builder)
+import qualified Data.Binary.Builder      as Builder
+import           Data.ByteString          (ByteString)
+import qualified Data.ByteString          as B
+import qualified Data.ByteString.Lazy     as BL
+import           Data.ByteString.Unsafe   (unsafeUseAsCStringLen)
+import qualified Data.Map                 as M
+import           Data.Maybe               (catMaybes, fromMaybe, listToMaybe)
+import           Data.Monoid              ((<>))
+import           Data.Text                (Text)
+import qualified Data.Text                as T
+import qualified Data.Text.Encoding       as T
 import           Data.Time.Clock
-import           Database.PostgreSQL.Simple
-import           Database.PostgreSQL.Simple.FromField (FromField (..),
-                                                       fromJSONField)
-import           Database.PostgreSQL.Simple.FromRow
-import           Database.PostgreSQL.Simple.ToField
-import           Magic                                (MagicFlag (MagicMimeType),
-                                                       magicCString,
-                                                       magicLoadDefault,
-                                                       magicOpen)
+import           Magic                    (MagicFlag (MagicMimeType),
+                                           magicCString, magicLoadDefault,
+                                           magicOpen)
 
 
 import           Shed.BlobServer
 import           Shed.Images
+import           Shed.IndexServer
 import           Shed.Signing
 import           Shed.Types
-
-data Permanode = Permanode { sha1       :: SHA1
-                           , attributes :: M.Map Text Text
-                           , thumbnail  :: Maybe ByteString
-                           , preview    :: Maybe Text
-                           } deriving Show
-
-instance FromField SHA1 where
-  fromField f b = SHA1 <$> fromField f b
-
-instance ToField SHA1 where
-  toField (SHA1 a) = toField a
-
-instance FromField (M.Map Text Text) where
-  fromField = fromJSONField
-
-instance FromRow Permanode where
-  fromRow = Permanode <$> field
-                      <*> field
-                      <*> field
-                      <*> field
 
 data Part = Part SHA1 Int deriving Show
 
@@ -182,16 +154,16 @@ readFileBytes store ps =
        bs
 
 
-indexBlob :: BlobServer a => a -> Connection -> SHA1 -> Blob -> IO ()
-indexBlob store conn (SHA1 sha) (PermanodeBlob _ _) =
-  void $ execute conn "INSERT INTO permanodes (sha1) VALUES (?) ON CONFLICT DO NOTHING" (Only sha)
-indexBlob store conn (SHA1 sha) (SetAttribute s d p a v) =
-  void $ execute conn "UPDATE permanodes SET attributes = jsonb_set(attributes, ARRAY[?], ?) WHERE sha1 = ?" (a,String v,p)
-indexBlob store conn (SHA1 sha) (FileBlob name parts) = do
-  Just (Only n) <- listToMaybe <$> query conn "SELECT COUNT(*) FROM permanodes WHERE attributes->'camliContent' = ?" (Only (String sha))
-  when (n > (0 :: Int)) $ do
-    execute conn "UPDATE permanodes SET show_in_ui = true WHERE attributes->'camliContent' = ?" (Only (String sha))
-    setSearchHigh conn (SHA1 sha) name
+indexBlob :: BlobServer a => a -> AnIndexServer -> SHA1 -> Blob -> IO ()
+indexBlob store (AnIndexServer serv) sha (PermanodeBlob _ _) =
+  makePermanode serv sha
+indexBlob store (AnIndexServer serv) sha (SetAttribute s d p a v) =
+  setPermanodeAttribute serv p a v
+indexBlob store (AnIndexServer serv) sha (FileBlob name parts) = do
+  exists <- permanodeHasContent serv sha
+  when exists $ do
+    setPermanodeShowInUI serv sha
+    setSearchHigh serv sha name
     builder <- readFileBytes store parts
     let dat = BL.toStrict $ Builder.toLazyByteString builder
     res <- getExifThumbnail dat
@@ -203,52 +175,35 @@ indexBlob store conn (SHA1 sha) (FileBlob name parts) = do
            let mkThumb = do
                 thm <- createThumbnail dat
                 case thm of
-                  Nothing -> return ()
-                  Just jpg -> void $ execute conn "UPDATE permanodes SET thumbnail = ? WHERE attributes->'camliContent' = ?" (Binary jpg, String sha)
+                  Nothing  -> return ()
+                  Just jpg -> setPermanodeThumbnail serv sha (BL.toStrict jpg)
            case mime of
              "image/jpeg" -> mkThumb
              "image/png"  -> mkThumb
-      Just jpg -> void $ execute conn "UPDATE permanodes SET thumbnail = ? WHERE attributes->'camliContent' = ?" (Binary jpg, String sha)
-indexBlob store conn (SHA1 sha) (EmailBlob from headers body) = do
-  Just (Only n) <- listToMaybe <$> query conn "SELECT COUNT(*) FROM permanodes WHERE attributes->'camliContent' = ?" (Only (String sha))
-  when (n > (0 :: Int)) $ do
-    execute conn "UPDATE permanodes SET show_in_ui = true WHERE attributes->'camliContent' = ?" (Only (String sha))
-    setSearchHigh conn (SHA1 sha) $
+      Just jpg -> setPermanodeThumbnail serv sha jpg
+indexBlob store (AnIndexServer serv) sha (EmailBlob from headers body) = do
+  exists <- permanodeHasContent serv sha
+  when exists $ do
+    setPermanodeShowInUI serv sha
+    setSearchHigh serv sha $
       T.concat [fromMaybe "" $ getHeader headers "From", "\n"
                ,fromMaybe "" $ getHeader headers "Subject", "\n"]
     b <- readFileBytes store body
     let body' = T.decodeUtf8 $ BL.toStrict $ Builder.toLazyByteString b
-    setSearchLow conn (SHA1 sha) body'
+    setSearchLow serv sha body'
     let preview = (maybe "" (<> "\n") (getHeader headers "Subject"))
                <> (maybe "" (\x -> "From: " <> x <> "\n") (getHeader headers "From"))
                <> (maybe "" (\x -> "Date: " <> x <> "\n") (getHeader headers "Date"))
-    void $ execute conn "UPDATE permanodes SET preview = ? WHERE attributes->'camliContent' = ?" (preview, String sha)
+    setPermanodePreview serv sha preview
 indexBlob _ _ _ (Bytes _) = return ()
 
-index :: BlobServer a => a -> IO ()
-index a = do
-  conn <- connectPostgreSQL "dbname=shed"
+index :: BlobServer a => a -> AnIndexServer -> IO ()
+index a s = do
   putStrLn ""
   enumerateBlobs a $ \sha dat -> do
     putStr $ "\r" <> show sha
     let blob = case decode dat of
                  Nothing -> Bytes dat
                  Just b  -> b
-    indexBlob a conn sha blob
+    indexBlob a s sha blob
   putStrLn "\rDONE                                            "
-
-wipe :: IO ()
-wipe = do
-  conn <- connectPostgreSQL "dbname=shed"
-  void $ execute_ conn "delete from permanodes"
-
-setSearchHigh :: Connection -> SHA1 -> Text -> IO ()
-setSearchHigh conn (SHA1 sha) text =
-  void $ execute conn "UPDATE permanodes SET search_high = ? WHERE attributes->'camliContent' = ?" (text, String sha)
-
-setSearchLow :: Connection -> SHA1 -> Text -> IO ()
-setSearchLow conn (SHA1 sha) text =
-  void $ execute conn "UPDATE permanodes SET search_low = ? WHERE attributes->'camliContent' = ?" (text, String sha)
-
-search :: Connection -> Text -> IO [Permanode]
-search conn t = query conn "SELECT sha1, attributes, thumbnail, preview FROM permanodes WHERE (setweight(to_tsvector(permanodes.search_high),'A') || setweight(to_tsvector(permanodes.search_low), 'B')) @@ to_tsquery('english', ?) ORDER BY ts_rank((setweight(to_tsvector(permanodes.search_high),'A') || setweight(to_tsvector(permanodes.search_low), 'B')), to_tsquery('english', ?)) DESC" (t,t)

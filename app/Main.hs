@@ -1,42 +1,42 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes       #-}
+{-# LANGUAGE RankNTypes        #-}
 {-# LANGUAGE TupleSections     #-}
 module Main where
 
-import           Control.Logging            (log', withStderrLogging)
+import           Control.Logging             (log', withStderrLogging)
 import           Data.Aeson
-import           Data.Aeson.Encode.Pretty   (encodePretty)
-import           Data.Binary.Builder        (Builder)
-import qualified Data.Binary.Builder        as Builder
-import           Data.ByteString            (ByteString)
-import qualified Data.ByteString.Lazy       as BL
-import           Data.ByteString.Unsafe     (unsafeUseAsCStringLen)
-import           Data.Map                   (Map)
-import qualified Data.Map                   as M
-import           Data.Maybe                 (catMaybes, fromMaybe, isJust,
-                                             listToMaybe)
-import           Data.Monoid                ((<>))
-import           Data.Text                  (Text)
-import qualified Data.Text                  as T
-import qualified Data.Text.Encoding         as T
-import           Database.PostgreSQL.Simple (Binary (..), Connection, Only (..),
-                                             connectPostgreSQL, query)
-import qualified HTMLEntities.Text          as HE
-import           Magic                      (MagicFlag (MagicMimeType),
-                                             magicCString, magicLoadDefault,
-                                             magicOpen)
-import           Network.HTTP.Types         (hContentType)
-import           Network.HTTP.Types.Status  (status200)
-import           Network.Wai                (Response, rawPathInfo,
-                                             requestMethod, responseBuilder,
-                                             responseLBS)
-import           Network.Wai.Handler.Warp   (runEnv)
-import           System.Environment         (getEnv, lookupEnv)
-import           System.FilePath            (takeExtension)
+import           Data.Aeson.Encode.Pretty    (encodePretty)
+import           Data.Binary.Builder         (Builder)
+import qualified Data.Binary.Builder         as Builder
+import           Data.ByteString             (ByteString)
+import qualified Data.ByteString.Lazy        as BL
+import           Data.ByteString.Unsafe      (unsafeUseAsCStringLen)
+import           Data.Map                    (Map)
+import qualified Data.Map                    as M
+import           Data.Maybe                  (catMaybes, fromMaybe, isJust,
+                                              listToMaybe)
+import           Data.Monoid                 ((<>))
+import           Data.Text                   (Text)
+import qualified Data.Text                   as T
+import qualified Data.Text.Encoding          as T
+import           Database.PostgreSQL.Simple  (Connection, connectPostgreSQL)
+import qualified HTMLEntities.Text           as HE
+import           Magic                       (MagicFlag (MagicMimeType),
+                                              magicCString, magicLoadDefault,
+                                              magicOpen)
+import           Network.HTTP.Types          (hContentType)
+import           Network.HTTP.Types.Status   (status200)
+import           Network.Wai                 (Response, rawPathInfo,
+                                              requestMethod, responseBuilder,
+                                              responseLBS)
+import           Network.Wai.Handler.Warp    (runEnv)
+import           System.Environment          (getEnv, lookupEnv)
+import           System.FilePath             (takeExtension)
 import           Text.RE.Replace
 import           Text.RE.TDFA.Text
 import           Web.Fn
-import qualified Web.Larceny                as L
+import qualified Web.Larceny                 as L
 
 import           Shed.BlobServer
 import           Shed.BlobServer.Directory
@@ -44,6 +44,8 @@ import           Shed.Files
 import           Shed.Images
 import           Shed.Importers
 import           Shed.Indexer
+import           Shed.IndexServer
+import           Shed.IndexServer.Postgresql
 import           Shed.Signing
 import           Shed.Types
 
@@ -53,10 +55,11 @@ type Substitutions = L.Substitutions ()
 
 data Ctxt = Ctxt { _req     :: FnRequest
                  , _store   :: FileStore
-                 , _db      :: Connection
+                 , _db      :: AnIndexServer
                  , _library :: Library
                  , _key     :: Key
                  }
+
 instance RequestContext Ctxt where
   getRequest = _req
   setRequest c r = c { _req = r }
@@ -84,7 +87,7 @@ initializer = do
   ref <- writeBlob store keyblob
   let key = Key keyid ref
   log' $ "Opening up the shed (" <> pth <> " & " <> db <> ")..."
-  return (Ctxt defaultFnRequest store conn lib key)
+  return (Ctxt defaultFnRequest store (AnIndexServer $ PG conn) lib key)
 
 main :: IO ()
 main = withStderrLogging $
@@ -125,7 +128,8 @@ permanodeSubs (Permanode (SHA1 sha) attrs thumb prev) =
 
 indexH :: Ctxt -> Maybe Int -> IO (Maybe Response)
 indexH ctxt page = do
-  ps <- query (_db ctxt) "SELECT sha1, attributes, thumbnail, preview FROM permanodes WHERE show_in_ui = true ORDER BY sha1 DESC LIMIT 100 OFFSET ?" (Only (100 * (fromMaybe 0 page)))
+  ps <- case (_db ctxt) of
+          AnIndexServer serv -> getPermanodes serv (fromMaybe 0 page)
   renderWith ctxt
     (L.subs [("has-more", L.fillChildren)
             ,("next-page", L.textFill $ maybe "1" (T.pack . show . (+1)) page)
@@ -136,7 +140,8 @@ indexH ctxt page = do
 searchH :: Ctxt -> Text -> IO (Maybe Response)
 searchH ctxt q = do
   if T.strip q == "" then redirect "/" else do
-    ps <- search (_db ctxt) q
+    ps <- case (_db ctxt) of
+            AnIndexServer serv -> search serv q
     if length ps == 0 then redirect "/" else
       renderWith ctxt
         (L.subs [("has-more", L.textFill "")
@@ -168,7 +173,8 @@ blobH ctxt sha = do
       extra <-
         case b of
           PermanodeBlob _ _ -> do
-            mp <- listToMaybe <$> query (_db ctxt) "SELECT sha1, attributes, thumbnail, preview FROM permanodes WHERE sha1 = ?" (Only sha)
+            mp <- case (_db ctxt) of
+                    AnIndexServer serv -> getPermanode serv sha
             return $ case mp of
                        Nothing -> Nothing
                        Just p  -> Just $ BL.toStrict $ encodePretty (toJSON $ attributes p)
@@ -255,10 +261,11 @@ renderIcon = sendFile "static/icon.png"
 
 thumbH :: Ctxt -> SHA1 -> IO (Maybe Response)
 thumbH ctxt sha =
-  do res <- listToMaybe <$> query (_db ctxt) "SELECT thumbnail FROM permanodes WHERE sha1 = ?" (Only sha)
+  do res <- case (_db ctxt) of
+              AnIndexServer serv -> getThumbnail serv sha
      case res of
        Nothing -> renderIcon
-       Just (Only (Binary jpg)) -> return $ Just $ responseBuilder status200 [(hContentType, "image/jpeg")] (Builder.fromByteString jpg)
+       Just jpg -> return $ Just $ responseBuilder status200 [(hContentType, "image/jpeg")] (Builder.fromByteString jpg)
 
 
 smartBlobH :: Ctxt -> SHA1 -> IO (Maybe Response)
@@ -295,5 +302,5 @@ fileH ctxt sha =
 
 uploadH :: Ctxt -> File -> IO (Maybe Response)
 uploadH ctxt f = do log' $ "Uploading " <> fileName f <> "..."
-                    process (_store ctxt) (_key ctxt) (_db ctxt) f
+                    process (_store ctxt) (_db ctxt) (_key ctxt)  f
                     okText "OK"

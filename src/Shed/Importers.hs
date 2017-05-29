@@ -29,25 +29,26 @@ import           Shed.BlobServer
 import           Shed.Files
 import           Shed.Files
 import           Shed.Indexer
+import           Shed.IndexServer
 import           Shed.Types
 
-process :: BlobServer a => a -> Key -> Connection -> File -> IO ()
-process store key conn f =
+process :: BlobServer a => a -> AnIndexServer -> Key  -> File -> IO ()
+process store serv key f =
   case fileContentType f of
-    "image/jpeg" -> addFile conn key store f
-    "image/png" -> addFile conn key store f
-    "application/zip" -> unzipper store key conn f
+    "image/jpeg" -> addFile store serv key f
+    "image/png" -> addFile store serv key f
+    "application/zip" -> unzipper store serv key f
     typ -> case map toLower $ takeExtension (T.unpack $ fileName f) of
-             ".mbox" -> emailextract store key conn f
-             ".jpg" -> addFile conn key store f
-             ".jpeg" -> addFile conn key store f
-             ".png" -> addFile conn key store f
-             ".zip" -> unzipper store key conn f
+             ".mbox" -> emailextract store serv key f
+             ".jpg" -> addFile store serv key f
+             ".jpeg" -> addFile store serv key f
+             ".png" -> addFile store serv key f
+             ".zip" -> unzipper store serv key f
              ext -> log' $ "Don't know how to process files ending in " <> T.pack ext <> " of type " <> typ <> "."
 
 
-unzipper :: BlobServer a => a -> Key -> Connection -> File -> IO ()
-unzipper store key conn f = do
+unzipper :: BlobServer a => a -> AnIndexServer -> Key -> File -> IO ()
+unzipper store serv key f = do
   m <- magicOpen [MagicMimeType]
   magicLoadDefault m
   withTempFile "tmp" "zip." $ \tmpFile hFile -> do
@@ -57,10 +58,10 @@ unzipper store key conn f = do
       names <- entryNames
       mapM_ (\n -> do bs <- sourceEntry n $ CB.sinkLbs
                       mime <- liftIO $ unsafeUseAsCStringLen (BL.toStrict bs) (magicCString m)
-                      liftIO $ process store key conn (File (T.pack n) (T.pack mime) bs)) names
+                      liftIO $ process store serv key (File (T.pack n) (T.pack mime) bs)) names
 
-emailextract :: BlobServer a => a -> Key -> Connection -> File -> IO ()
-emailextract store key conn f = do
+emailextract :: BlobServer a => a -> AnIndexServer -> Key -> File -> IO ()
+emailextract store serv key f = do
   let messages = parseMBox (TL.decodeUtf8 (fileContent f))
   mapM_ (\m -> do log' $ "Adding email '" <> TL.toStrict (fromLine m) <> "'."
                   brefs <- addChunks store (BL.toStrict $ TL.encodeUtf8 $ body m)
@@ -73,8 +74,8 @@ emailextract store key conn f = do
                     (SHA1 eref) <- writeBlob store emailblob
                     (pref, permablob) <- addPermanode key store
                     (cref, claimblob) <- setAttribute key store pref "camliContent" eref
-                    indexBlob store conn pref permablob
-                    indexBlob store conn cref claimblob
-                    indexBlob store conn (SHA1 eref) email
+                    indexBlob store serv pref permablob
+                    indexBlob store serv cref claimblob
+                    indexBlob store serv (SHA1 eref) email
 
         ) messages
