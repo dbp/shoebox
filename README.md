@@ -21,7 +21,7 @@ Further, Shed has somewhat different goals:
 2. Shed does not care about sharing. It's primary goal is to be able to dump
    data into it and then process (& archive) it. Being online at all is, at
    least for now, a non-goal, except insofar as a browser is used as an
-   interface. Sharing seems to be where the majority of effort on the main
+   interface. Sharing seems to be where the majority of recent effort on the main
    Camlistore implementation has gone. Whereas, by contrast, ever though there
    was discussion of it years ago, Camlistore still doesn't have any support for
    storing email (which Shed does!). Related to not being about sharing, Shed
