@@ -68,6 +68,7 @@ and have it churn through them.
 
 ## Time Spent (hrs)
 
+5/26: 2
 5/27: 10
 5/28: 7
 5/29: 9
