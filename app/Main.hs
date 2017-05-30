@@ -134,6 +134,8 @@ site ctxt = do
                        , path "blob" // segment ==> blobH
                        , path "upload" // file "file" !=> uploadH
                        , path "search" // param "q" ==> searchH
+                       , path "reindex" ==> reindexH
+                       , path "wipe" ==> wipeH
                        ]
     `fallthrough` do r <- render ctxt "404"
                      case r of
@@ -172,6 +174,16 @@ searchH ctxt q = do
                 ,("q", L.textFill q)
                 ,("permanodes", L.mapSubs permanodeSubs ps)])
         "index"
+
+reindexH :: Ctxt -> IO (Maybe Response)
+reindexH ctxt = do
+  index (_store ctxt) (_db ctxt)
+  okText "OK."
+
+wipeH :: Ctxt -> IO (Maybe Response)
+wipeH ctxt = do
+  wipe (_db ctxt)
+  redirect "/"
 
 hyperLinkEscape :: Text -> Text
 hyperLinkEscape t =

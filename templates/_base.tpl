@@ -9,6 +9,8 @@
     </div>
     <form action="/search">
       <input name="q" type="text" placeholder="SEARCH..." value="${q}"/>
+      <button class="index" onclick="return index();"></button>
+      <a href="/wipe" class="wipe" onclick="return confirm('Are you sure you want to wipe the index?');"></a>
     </form>
     <apply-content/>
   </body>

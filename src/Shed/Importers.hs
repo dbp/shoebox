@@ -32,8 +32,12 @@ import           Shed.Indexer
 import           Shed.IndexServer
 import           Shed.Types
 
+isBoringFile :: File -> Bool
+isBoringFile f = "__MACOSX" `T.isPrefixOf` fileName f || ".DS_STORE" == fileName f
+
 process :: ABlobServer -> AnIndexServer -> Key  -> File -> IO ()
 process store serv key f =
+  if isBoringFile f then return () else
   case fileContentType f of
     "image/jpeg" -> addFile store serv key f
     "image/png" -> addFile store serv key f

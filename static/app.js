@@ -139,3 +139,16 @@ document.addEventListener('keydown', function(e) {
         }
     }
 });
+
+function index() {
+    var request = new XMLHttpRequest();
+    request.open('POST', '/reindex', true);
+    request.onreadystatechange = function() { // ASYNC
+	      if (request.readyState > 3 && request.status === 200) {
+            window.location.reload(true);
+        }
+    };
+    request.send();
+    document.querySelector("button.index").classList.add("spin");
+    return false;
+}

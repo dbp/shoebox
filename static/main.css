@@ -118,15 +118,53 @@ li img {
     animation: spinner .6s linear infinite;
 }
 
+.spin {
+    animation: spinner 1.5s linear infinite;
+}
+
 form {
     padding: 20px 20%;
     text-align: center;
+    position: relative;
 }
 form input {
     font-size: 2em;
-    width: 100%;
+    width: 90%;
     text-align: center;
 }
+
+form button.index {
+    position: absolute;
+    right: 60px;
+    height: 32px;
+    width: 32px;
+    background-size: 100%;
+    background-image: url("/static/refresh.png");
+    border: 0;
+    background-color: transparent;
+}
+
+form button.index:hover {
+    background-image: url("/static/refresh_b.png");
+    cursor: pointer;
+}
+
+form a.wipe {
+    position: absolute;
+    right: 20px;
+    height: 32px;
+    width: 32px;
+    background-size: 100%;
+    background-image: url("/static/delete.png");
+    border: 0;
+    background-color: transparent;
+}
+
+form a.wipe:hover {
+    background-image: url("/static/delete_b.png");
+    cursor: pointer;
+}
+
 
 h3 {
     text-align: center;
