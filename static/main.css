@@ -133,9 +133,10 @@ form input {
     text-align: center;
 }
 
-form button.index {
+button.index {
     position: absolute;
     right: 60px;
+    top: 20px;
     height: 32px;
     width: 32px;
     background-size: 100%;
@@ -144,14 +145,15 @@ form button.index {
     background-color: transparent;
 }
 
-form button.index:hover {
+button.index:hover {
     background-image: url("/static/refresh_b.png");
     cursor: pointer;
 }
 
-form a.wipe {
+a.wipe {
     position: absolute;
     right: 20px;
+    top: 20px;
     height: 32px;
     width: 32px;
     background-size: 100%;
@@ -160,7 +162,7 @@ form a.wipe {
     background-color: transparent;
 }
 
-form a.wipe:hover {
+a.wipe:hover {
     background-image: url("/static/delete_b.png");
     cursor: pointer;
 }
