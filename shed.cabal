@@ -84,6 +84,7 @@ executable shed-exe
                      , aeson-pretty
                      , magic
                      , sqlite-simple
+                     , hashtables
   default-language:    Haskell2010
 
 test-suite shed-test

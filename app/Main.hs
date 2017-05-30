@@ -12,6 +12,7 @@ import qualified Data.Binary.Builder         as Builder
 import           Data.ByteString             (ByteString)
 import qualified Data.ByteString.Lazy        as BL
 import           Data.ByteString.Unsafe      (unsafeUseAsCStringLen)
+import qualified Data.HashTable.IO           as H
 import           Data.Map                    (Map)
 import qualified Data.Map                    as M
 import           Data.Maybe                  (catMaybes, fromMaybe, isJust,
@@ -42,6 +43,7 @@ import qualified Web.Larceny                 as L
 
 import           Shed.BlobServer
 import           Shed.BlobServer.Directory
+import           Shed.BlobServer.Memory
 import           Shed.Files
 import           Shed.Images
 import           Shed.Importers
@@ -81,8 +83,12 @@ renderWith ctxt subs tpl =
 initializer :: IO Ctxt
 initializer = do
   lib <- L.loadTemplates "templates" L.defaultOverrides
-  pth <- T.pack . fromMaybe "." <$> (lookupEnv "BLOBS")
-  let store = ABlobServer (FileStore pth)
+  pth' <- fmap T.pack <$> (lookupEnv "BLOBS")
+  (store, pth) <- case pth' of
+                    Just pth'' -> return (ABlobServer (FileStore pth''), pth'')
+                    Nothing    -> do
+                      ht <- H.new
+                      return (ABlobServer (MemoryStore ht), ":memory:")
   db' <- fmap T.pack <$> lookupEnv "INDEX"
   (serv, nm) <- case db' of
                   Just db -> do c <- PG.connectPostgreSQL $ T.encodeUtf8 $ "dbname='" <> db <> "'"
@@ -103,7 +109,7 @@ initializer = do
   keyblob <- getPubKey keyid
   ref <- writeBlob store keyblob
   let key = Key keyid ref
-  log' $ "Opening up the shed (" <> pth <> " & " <> nm <> ")..."
+  log' $ "Opening the Shed [Blobs " <> pth <> " Index " <> nm <> "]"
   return (Ctxt defaultFnRequest store serv lib key)
 
 main :: IO ()
