@@ -28,9 +28,9 @@ class BlobServer a where
   readBlob :: a -> SHA1 -> IO (Maybe BL.ByteString)
   enumerateBlobs :: a -> (SHA1 -> BL.ByteString -> IO ()) -> IO ()
 
-data ABlobServer = forall s. BlobServer s => ABlobServer s
+data SomeBlobServer = forall s. BlobServer s => SomeBlobServer s
 
-instance BlobServer ABlobServer where
-  writeBlob (ABlobServer s) = writeBlob s
-  readBlob (ABlobServer s) = readBlob s
-  enumerateBlobs (ABlobServer s) = enumerateBlobs s
+instance BlobServer SomeBlobServer where
+  writeBlob (SomeBlobServer s) = writeBlob s
+  readBlob (SomeBlobServer s) = readBlob s
+  enumerateBlobs (SomeBlobServer s) = enumerateBlobs s

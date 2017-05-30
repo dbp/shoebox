@@ -23,26 +23,26 @@ import           Shed.Types
 chunkSize :: Int
 chunkSize = 1000000
 
-addChunks :: ABlobServer -> ByteString -> IO [(SHA1, Int)]
+addChunks :: SomeBlobServer -> ByteString -> IO [(SHA1, Int)]
 addChunks store bs = do
   let chunks = splitEvery chunkSize bs
   mapM (\p -> (,B.length p) <$> writeBlob store p) chunks
 
-addPermanode :: ABlobServer -> Key -> IO (SHA1, Blob)
+addPermanode :: SomeBlobServer -> Key -> IO (SHA1, Blob)
 addPermanode store key = do
   random <- T.pack . show . abs <$> (randomIO :: IO Int)
   let permablob = PermanodeBlob (keyBlobRef key) random
   perma <- blobToSignedJson key permablob
   (, permablob) <$> writeBlob store perma
 
-setAttribute :: ABlobServer -> Key -> SHA1 -> Text -> Text -> IO (SHA1, Blob)
+setAttribute :: SomeBlobServer -> Key -> SHA1 -> Text -> Text -> IO (SHA1, Blob)
 setAttribute store key pref name value = do
   now <- getCurrentTime
   let claimblob = SetAttribute (keyBlobRef key) now pref name value
   claim <- blobToSignedJson key claimblob
   (, claimblob) <$> writeBlob store claim
 
-addFile :: ABlobServer -> AnIndexServer -> Key -> File -> IO ()
+addFile :: SomeBlobServer -> SomeIndexServer -> Key -> File -> IO ()
 addFile store serv key file = do
   refs <- addChunks store (BL.toStrict $ fileContent file)
   let parts = map (uncurry Part) refs

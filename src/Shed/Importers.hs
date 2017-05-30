@@ -35,7 +35,7 @@ import           Shed.Types
 isBoringFile :: File -> Bool
 isBoringFile f = "__MACOSX" `T.isPrefixOf` fileName f || ".DS_STORE" == fileName f
 
-process :: ABlobServer -> AnIndexServer -> Key  -> File -> IO ()
+process :: SomeBlobServer -> SomeIndexServer -> Key  -> File -> IO ()
 process store serv key f =
   if isBoringFile f then return () else
   case fileContentType f of
@@ -51,7 +51,7 @@ process store serv key f =
              ext -> log' $ "Don't know how to process files ending in " <> T.pack ext <> " of type " <> typ <> "."
 
 
-unzipper :: ABlobServer -> AnIndexServer -> Key -> File -> IO ()
+unzipper :: SomeBlobServer -> SomeIndexServer -> Key -> File -> IO ()
 unzipper store serv key f = do
   m <- magicOpen [MagicMimeType]
   magicLoadDefault m
@@ -64,7 +64,7 @@ unzipper store serv key f = do
                       mime <- liftIO $ unsafeUseAsCStringLen (BL.toStrict bs) (magicCString m)
                       liftIO $ process store serv key (File (T.pack n) (T.pack mime) bs)) names
 
-emailextract :: ABlobServer -> AnIndexServer -> Key -> File -> IO ()
+emailextract :: SomeBlobServer -> SomeIndexServer -> Key -> File -> IO ()
 emailextract store serv key f = do
   let messages = parseMBox (TL.decodeUtf8 (fileContent f))
   mapM_ (\m -> do log' $ "Adding email '" <> TL.toStrict (fromLine m) <> "'."

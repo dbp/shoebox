@@ -59,8 +59,8 @@ type Library = L.Library ()
 type Substitutions = L.Substitutions ()
 
 data Ctxt = Ctxt { _req     :: FnRequest
-                 , _store   :: ABlobServer
-                 , _db      :: AnIndexServer
+                 , _store   :: SomeBlobServer
+                 , _db      :: SomeIndexServer
                  , _library :: Library
                  , _key     :: Key
                  }
@@ -85,18 +85,18 @@ initializer = do
   lib <- L.loadTemplates "templates" L.defaultOverrides
   pth' <- fmap T.pack <$> (lookupEnv "BLOBS")
   (store, pth) <- case pth' of
-                    Just pth'' -> return (ABlobServer (FileStore pth''), pth'')
+                    Just pth'' -> return (SomeBlobServer (FileStore pth''), pth'')
                     Nothing    -> do
                       ht <- H.new
-                      return (ABlobServer (MemoryStore ht), ":memory:")
+                      return (SomeBlobServer (MemoryStore ht), ":memory:")
   db' <- fmap T.pack <$> lookupEnv "INDEX"
   (serv, nm) <- case db' of
                   Just db -> do c <- PG.connectPostgreSQL $ T.encodeUtf8 $ "dbname='" <> db <> "'"
-                                return (AnIndexServer (PG c), db)
+                                return (SomeIndexServer (PG c), db)
                   Nothing -> do sql <- readFile "migrations/sqlite.sql"
                                 c <- SQLITE.open ":memory:"
                                 SQLITE.execute_ c (fromString sql)
-                                let serv = AnIndexServer (SL c)
+                                let serv = SomeIndexServer (SL c)
                                 log' "Running indexer to populate :memory: index."
                                 -- NOTE(dbp 2017-05-29): Run many times because
                                 -- we need permanodes in DB before files stored

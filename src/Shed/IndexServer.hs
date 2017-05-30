@@ -23,19 +23,19 @@ class IndexServer a where
   search :: a -> Text -> IO [Permanode]
   getThumbnail :: a -> SHA1 -> IO (Maybe ByteString)
 
-data AnIndexServer = forall s. IndexServer s => AnIndexServer s
+data SomeIndexServer = forall s. IndexServer s => SomeIndexServer s
 
-instance IndexServer AnIndexServer where
-  wipe (AnIndexServer s) = wipe s
-  makePermanode (AnIndexServer s) = makePermanode s
-  setPermanodeAttribute (AnIndexServer s) = setPermanodeAttribute s
-  permanodeHasContent (AnIndexServer s) = permanodeHasContent s
-  setPermanodeShowInUI (AnIndexServer s) = setPermanodeShowInUI s
-  setSearchHigh (AnIndexServer s) = setSearchHigh s
-  setSearchLow (AnIndexServer s) = setSearchLow s
-  setPermanodeThumbnail (AnIndexServer s) = setPermanodeThumbnail s
-  setPermanodePreview (AnIndexServer s) = setPermanodePreview s
-  getPermanode (AnIndexServer s) = getPermanode s
-  getPermanodes (AnIndexServer s) = getPermanodes s
-  search (AnIndexServer s) = search s
-  getThumbnail (AnIndexServer s) = getThumbnail s
+instance IndexServer SomeIndexServer where
+  wipe (SomeIndexServer s) = wipe s
+  makePermanode (SomeIndexServer s) = makePermanode s
+  setPermanodeAttribute (SomeIndexServer s) = setPermanodeAttribute s
+  permanodeHasContent (SomeIndexServer s) = permanodeHasContent s
+  setPermanodeShowInUI (SomeIndexServer s) = setPermanodeShowInUI s
+  setSearchHigh (SomeIndexServer s) = setSearchHigh s
+  setSearchLow (SomeIndexServer s) = setSearchLow s
+  setPermanodeThumbnail (SomeIndexServer s) = setPermanodeThumbnail s
+  setPermanodePreview (SomeIndexServer s) = setPermanodePreview s
+  getPermanode (SomeIndexServer s) = getPermanode s
+  getPermanodes (SomeIndexServer s) = getPermanodes s
+  search (SomeIndexServer s) = search s
+  getThumbnail (SomeIndexServer s) = getThumbnail s

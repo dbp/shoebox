@@ -155,7 +155,7 @@ readFileBytes store ps =
        bs
 
 
-indexBlob :: ABlobServer -> AnIndexServer -> SHA1 -> Blob -> IO ()
+indexBlob :: SomeBlobServer -> SomeIndexServer -> SHA1 -> Blob -> IO ()
 indexBlob store serv sha (PermanodeBlob _ _) =
   makePermanode serv sha
 indexBlob store serv sha (SetAttribute s d p a v) =
@@ -200,7 +200,7 @@ indexBlob store serv sha (EmailBlob from headers body) = do
 indexBlob _ _ _ (Bytes _) = return ()
 
 
-index :: ABlobServer -> AnIndexServer -> IO ()
+index :: SomeBlobServer -> SomeIndexServer -> IO ()
 index a s = do
   enumerateBlobs a $ \sha dat -> do
     putStr $ "\r" <> show sha
