@@ -3,9 +3,10 @@
 Shed is a from-scratch re-implementation of Camlistore in Haskell. Camlistore is
 a really cool project, but the actual implementation has always been somewhat
 unreliable to me (not so much the core, but the indexer layer & frontend, which
-is critical to actually use the thing). It's also a massive codebase, written in
-Go which is not a language I like (and in large parts written before Go really
-had many libraries).
+is critical to actually use the thing). It's also a massive codebase 
+(`git clone git@github.com:camlistore/camlistore.git && cd camlistore && cloc app bin clients cmd dev lib misc pkg server`, 
+which should be a decent approximation and excludes vendored libraries, reports almost 93K lines of Go), written in
+a language I don't like (Go).
 
 Further, Shed has somewhat different goals:
 
