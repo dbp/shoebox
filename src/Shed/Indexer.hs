@@ -155,12 +155,12 @@ readFileBytes store ps =
        bs
 
 
-indexBlob :: BlobServer a => a -> AnIndexServer -> SHA1 -> Blob -> IO ()
-indexBlob store (AnIndexServer serv) sha (PermanodeBlob _ _) =
+indexBlob :: ABlobServer -> AnIndexServer -> SHA1 -> Blob -> IO ()
+indexBlob store serv sha (PermanodeBlob _ _) =
   makePermanode serv sha
-indexBlob store (AnIndexServer serv) sha (SetAttribute s d p a v) =
+indexBlob store serv sha (SetAttribute s d p a v) =
   setPermanodeAttribute serv p a v
-indexBlob store (AnIndexServer serv) sha (FileBlob name parts) = do
+indexBlob store serv sha (FileBlob name parts) = do
   exists <- permanodeHasContent serv sha
   when exists $ do
     setPermanodeShowInUI serv sha
@@ -183,7 +183,7 @@ indexBlob store (AnIndexServer serv) sha (FileBlob name parts) = do
              "image/png"  -> mkThumb
              _            -> return ()
       Just jpg -> setPermanodeThumbnail serv sha jpg
-indexBlob store (AnIndexServer serv) sha (EmailBlob from headers body) = do
+indexBlob store serv sha (EmailBlob from headers body) = do
   exists <- permanodeHasContent serv sha
   when exists $ do
     setPermanodeShowInUI serv sha
@@ -200,7 +200,7 @@ indexBlob store (AnIndexServer serv) sha (EmailBlob from headers body) = do
 indexBlob _ _ _ (Bytes _) = return ()
 
 
-index :: BlobServer a => a -> AnIndexServer -> IO ()
+index :: ABlobServer -> AnIndexServer -> IO ()
 index a s = do
   putStrLn ""
   enumerateBlobs a $ \sha dat -> do

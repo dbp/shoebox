@@ -57,7 +57,7 @@ type Library = L.Library ()
 type Substitutions = L.Substitutions ()
 
 data Ctxt = Ctxt { _req     :: FnRequest
-                 , _store   :: FileStore
+                 , _store   :: ABlobServer
                  , _db      :: AnIndexServer
                  , _library :: Library
                  , _key     :: Key
@@ -82,7 +82,7 @@ initializer :: IO Ctxt
 initializer = do
   lib <- L.loadTemplates "templates" L.defaultOverrides
   pth <- T.pack . fromMaybe "." <$> (lookupEnv "BLOBS")
-  let store = FileStore pth
+  let store = ABlobServer (FileStore pth)
   db' <- fmap T.pack <$> lookupEnv "INDEX"
   (serv, nm) <- case db' of
                   Just db -> do c <- PG.connectPostgreSQL $ T.encodeUtf8 $ "dbname='" <> db <> "'"
@@ -145,8 +145,7 @@ permanodeSubs (Permanode (SHA1 sha) attrs thumb prev) =
 
 indexH :: Ctxt -> Maybe Int -> IO (Maybe Response)
 indexH ctxt page = do
-  ps <- case (_db ctxt) of
-          AnIndexServer serv -> getPermanodes serv (fromMaybe 0 page)
+  ps <- getPermanodes (_db ctxt) (fromMaybe 0 page)
   renderWith ctxt
     (L.subs [("has-more", L.fillChildren)
             ,("next-page", L.textFill $ maybe "1" (T.pack . show . (+1)) page)
@@ -157,8 +156,7 @@ indexH ctxt page = do
 searchH :: Ctxt -> Text -> IO (Maybe Response)
 searchH ctxt q = do
   if T.strip q == "" then redirect "/" else do
-    ps <- case (_db ctxt) of
-            AnIndexServer serv -> search serv q
+    ps <- search (_db ctxt) q
     if length ps == 0 then redirect "/" else
       renderWith ctxt
         (L.subs [("has-more", L.textFill "")
@@ -190,8 +188,7 @@ blobH ctxt sha = do
       extra <-
         case b of
           PermanodeBlob _ _ -> do
-            mp <- case (_db ctxt) of
-                    AnIndexServer serv -> getPermanode serv sha
+            mp <- getPermanode (_db ctxt) sha
             return $ case mp of
                        Nothing -> Nothing
                        Just p  -> Just $ BL.toStrict $ encodePretty (toJSON $ attributes p)
@@ -278,8 +275,7 @@ renderIcon = sendFile "static/icon.png"
 
 thumbH :: Ctxt -> SHA1 -> IO (Maybe Response)
 thumbH ctxt sha =
-  do res <- case (_db ctxt) of
-              AnIndexServer serv -> getThumbnail serv sha
+  do res <- getThumbnail (_db ctxt) sha
      case res of
        Nothing -> renderIcon
        Just jpg -> return $ Just $ responseBuilder status200 [(hContentType, "image/jpeg")] (Builder.fromByteString jpg)

@@ -24,3 +24,18 @@ class IndexServer a where
   getThumbnail :: a -> SHA1 -> IO (Maybe ByteString)
 
 data AnIndexServer = forall s. IndexServer s => AnIndexServer s
+
+instance IndexServer AnIndexServer where
+  wipe (AnIndexServer s) = wipe s
+  makePermanode (AnIndexServer s) = makePermanode s
+  setPermanodeAttribute (AnIndexServer s) = setPermanodeAttribute s
+  permanodeHasContent (AnIndexServer s) = permanodeHasContent s
+  setPermanodeShowInUI (AnIndexServer s) = setPermanodeShowInUI s
+  setSearchHigh (AnIndexServer s) = setSearchHigh s
+  setSearchLow (AnIndexServer s) = setSearchLow s
+  setPermanodeThumbnail (AnIndexServer s) = setPermanodeThumbnail s
+  setPermanodePreview (AnIndexServer s) = setPermanodePreview s
+  getPermanode (AnIndexServer s) = getPermanode s
+  getPermanodes (AnIndexServer s) = getPermanodes s
+  search (AnIndexServer s) = search s
+  getThumbnail (AnIndexServer s) = getThumbnail s

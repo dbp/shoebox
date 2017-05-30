@@ -1,4 +1,5 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE OverloadedStrings         #-}
 module Shed.BlobServer where
 
 import qualified Crypto.Hash.SHA1        as SHA1
@@ -26,3 +27,10 @@ class BlobServer a where
   writeBlob :: a -> ByteString -> IO SHA1
   readBlob :: a -> SHA1 -> IO (Maybe BL.ByteString)
   enumerateBlobs :: a -> (SHA1 -> BL.ByteString -> IO ()) -> IO ()
+
+data ABlobServer = forall s. BlobServer s => ABlobServer s
+
+instance BlobServer ABlobServer where
+  writeBlob (ABlobServer s) = writeBlob s
+  readBlob (ABlobServer s) = readBlob s
+  enumerateBlobs (ABlobServer s) = enumerateBlobs s

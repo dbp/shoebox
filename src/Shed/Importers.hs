@@ -32,7 +32,7 @@ import           Shed.Indexer
 import           Shed.IndexServer
 import           Shed.Types
 
-process :: BlobServer a => a -> AnIndexServer -> Key  -> File -> IO ()
+process :: ABlobServer -> AnIndexServer -> Key  -> File -> IO ()
 process store serv key f =
   case fileContentType f of
     "image/jpeg" -> addFile store serv key f
@@ -47,7 +47,7 @@ process store serv key f =
              ext -> log' $ "Don't know how to process files ending in " <> T.pack ext <> " of type " <> typ <> "."
 
 
-unzipper :: BlobServer a => a -> AnIndexServer -> Key -> File -> IO ()
+unzipper :: ABlobServer -> AnIndexServer -> Key -> File -> IO ()
 unzipper store serv key f = do
   m <- magicOpen [MagicMimeType]
   magicLoadDefault m
@@ -60,7 +60,7 @@ unzipper store serv key f = do
                       mime <- liftIO $ unsafeUseAsCStringLen (BL.toStrict bs) (magicCString m)
                       liftIO $ process store serv key (File (T.pack n) (T.pack mime) bs)) names
 
-emailextract :: BlobServer a => a -> AnIndexServer -> Key -> File -> IO ()
+emailextract :: ABlobServer -> AnIndexServer -> Key -> File -> IO ()
 emailextract store serv key f = do
   let messages = parseMBox (TL.decodeUtf8 (fileContent f))
   mapM_ (\m -> do log' $ "Adding email '" <> TL.toStrict (fromLine m) <> "'."
@@ -72,8 +72,8 @@ emailextract store serv key f = do
                   exists <- statBlob store emailblob
                   if exists then return () else do
                     (SHA1 eref) <- writeBlob store emailblob
-                    (pref, permablob) <- addPermanode key store
-                    (cref, claimblob) <- setAttribute key store pref "camliContent" eref
+                    (pref, permablob) <- addPermanode store key
+                    (cref, claimblob) <- setAttribute store key pref "camliContent" eref
                     indexBlob store serv pref permablob
                     indexBlob store serv cref claimblob
                     indexBlob store serv (SHA1 eref) email

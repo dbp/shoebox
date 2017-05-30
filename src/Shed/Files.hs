@@ -23,26 +23,26 @@ import           Shed.Types
 chunkSize :: Int
 chunkSize = 1000000
 
-addChunks :: BlobServer a => a -> ByteString -> IO [(SHA1, Int)]
+addChunks :: ABlobServer -> ByteString -> IO [(SHA1, Int)]
 addChunks store bs = do
   let chunks = splitEvery chunkSize bs
   mapM (\p -> (,B.length p) <$> writeBlob store p) chunks
 
-addPermanode :: BlobServer a => Key -> a -> IO (SHA1, Blob)
-addPermanode key store = do
+addPermanode :: ABlobServer -> Key -> IO (SHA1, Blob)
+addPermanode store key = do
   random <- T.pack . show . abs <$> (randomIO :: IO Int)
   let permablob = PermanodeBlob (keyBlobRef key) random
   perma <- blobToSignedJson key permablob
   (, permablob) <$> writeBlob store perma
 
-setAttribute :: BlobServer a => Key -> a -> SHA1 -> Text -> Text -> IO (SHA1, Blob)
-setAttribute key store pref name value = do
+setAttribute :: ABlobServer -> Key -> SHA1 -> Text -> Text -> IO (SHA1, Blob)
+setAttribute store key pref name value = do
   now <- getCurrentTime
   let claimblob = SetAttribute (keyBlobRef key) now pref name value
   claim <- blobToSignedJson key claimblob
   (, claimblob) <$> writeBlob store claim
 
-addFile :: BlobServer a => a -> AnIndexServer -> Key -> File -> IO ()
+addFile :: ABlobServer -> AnIndexServer -> Key -> File -> IO ()
 addFile store serv key file = do
   refs <- addChunks store (BL.toStrict $ fileContent file)
   let parts = map (uncurry Part) refs
@@ -51,8 +51,8 @@ addFile store serv key file = do
   exists <- statBlob store fileblob'
   if exists then return () else do
     (SHA1 fref) <- writeBlob store fileblob'
-    (pref, permablob) <- addPermanode key store
-    (cref, claimblob) <- setAttribute key store pref "camliContent" fref
+    (pref, permablob) <- addPermanode store key
+    (cref, claimblob) <- setAttribute store key pref "camliContent" fref
     indexBlob store serv pref permablob
     indexBlob store serv cref claimblob
     indexBlob store serv (SHA1 fref) fileblob
