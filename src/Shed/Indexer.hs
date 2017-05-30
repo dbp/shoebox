@@ -202,7 +202,6 @@ indexBlob _ _ _ (Bytes _) = return ()
 
 index :: ABlobServer -> AnIndexServer -> IO ()
 index a s = do
-  putStrLn ""
   enumerateBlobs a $ \sha dat -> do
     putStr $ "\r" <> show sha
     let blob = case decode dat of

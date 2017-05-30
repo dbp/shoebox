@@ -135,7 +135,10 @@ site ctxt = do
                        , path "upload" // file "file" !=> uploadH
                        , path "search" // param "q" ==> searchH
                        ]
-                  `fallthrough` notFoundText "Page not found."
+    `fallthrough` do r <- render ctxt "404"
+                     case r of
+                       Just r' -> return r'
+                       Nothing -> notFoundText "Page not found"
 
 permanodeSubs :: Permanode -> Substitutions
 permanodeSubs (Permanode (SHA1 sha) attrs thumb prev) =
