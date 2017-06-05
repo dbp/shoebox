@@ -4,7 +4,9 @@
 {-# LANGUAGE TupleSections     #-}
 module Main where
 
+import           Control.Applicative         (liftA2)
 import           Control.Logging             (log', withStderrLogging)
+import           Control.Monad
 import           Data.Aeson
 import           Data.Aeson.Encode.Pretty    (encodePretty)
 import           Data.Binary.Builder         (Builder)
@@ -41,18 +43,22 @@ import           Text.RE.TDFA.Text
 import           Web.Fn
 import qualified Web.Larceny                 as L
 
+import qualified Shed.Blob.Email             as Email
+import qualified Shed.Blob.File              as File
+import qualified Shed.Blob.Permanode         as Permanode
 import           Shed.BlobServer
 import           Shed.BlobServer.Directory
 import           Shed.BlobServer.Memory
-import           Shed.Files
 import           Shed.Images
-import           Shed.Importers
+import           Shed.Importer
 import           Shed.Indexer
 import           Shed.IndexServer
 import           Shed.IndexServer.Postgresql
 import           Shed.IndexServer.Sqlite
 import           Shed.Signing
 import           Shed.Types
+import           Shed.Util
+
 
 type Fill = L.Fill ()
 type Library = L.Library ()
@@ -64,7 +70,6 @@ data Ctxt = Ctxt { _req     :: FnRequest
                  , _library :: Library
                  , _key     :: Key
                  }
-
 instance RequestContext Ctxt where
   getRequest = _req
   setRequest c r = c { _req = r }
@@ -128,10 +133,10 @@ site ctxt = do
   route ctxt [ end // param "page"          ==> indexH
                        , path "static" ==> staticServe "static"
                        , segment // path "thumb" ==> thumbH
-                       , segment ==> smartBlobH
-                       , path "file" // segment ==> fileH
-                       , path "raw" // segment ==> rawH
+                       , segment ==> renderH
                        , path "blob" // segment ==> blobH
+                       , path "file" // segment ==> \ctxt sha -> File.serve (_store ctxt) sha
+                       , path "raw" // segment ==> rawH
                        , path "upload" // file "file" !=> uploadH
                        , path "search" // param "q" ==> searchH
                        , path "reindex" ==> reindexH
@@ -185,41 +190,40 @@ wipeH ctxt = do
   wipe (_db ctxt)
   redirect "/"
 
-hyperLinkEscape :: Text -> Text
-hyperLinkEscape t =
-  replaceAll "<a href=\"/blob/${sha}\">${sha}</a>" $
-    (HE.text t) *=~ [re|${sha}(sha1-[0-9a-f]{40})|]
+mmsum :: (Monad f, MonadPlus m, Foldable t) => t (f (m a)) -> f (m a)
+mmsum = foldl (liftA2 mplus) (return mzero)
+
+renderH :: Ctxt -> SHA1 -> IO (Maybe Response)
+renderH ctxt sha = do
+  res' <- readBlob (_store ctxt) sha
+  case res' of
+    Nothing  -> return Nothing
+    Just bs ->
+      liftA2 mplus
+      (mmsum $ map (\f -> f (_store ctxt) (_db ctxt) (renderWith ctxt) sha bs)
+        [File.toHtml
+        ,Email.toHtml
+        ])
+      (blobH ctxt sha)
+
 
 blobH :: Ctxt -> SHA1 -> IO (Maybe Response)
 blobH ctxt sha = do
-  res' <- readBlob' (_store ctxt) sha
+  res' <- readBlob (_store ctxt) sha
   case res' of
-    Nothing  -> rawH ctxt sha
-    Just (Bytes bs) -> do
-      m <- magicOpen [MagicMimeType]
-      magicLoadDefault m
-      let b = BL.toStrict bs
-      mime <- unsafeUseAsCStringLen b (magicCString m)
-      let display = renderWith ctxt (L.subs [("content", L.textFill (T.decodeUtf8 b))]) "blob"
-      case mime of
-        "text/plain" -> display
-        "text/html"  -> display
-        _            -> rawH ctxt sha
-    Just b -> do
-      extra <-
-        case b of
-          PermanodeBlob _ _ -> do
-            mp <- getPermanode (_db ctxt) sha
-            return $ case mp of
-                       Nothing -> Nothing
-                       Just p  -> Just $ BL.toStrict $ encodePretty (toJSON $ attributes p)
-          _ -> return Nothing
-      Just blob <- fmap (T.decodeUtf8 . BL.toStrict) <$> readBlob (_store ctxt) sha
-      renderWith ctxt (L.subs [("content", L.rawTextFill (hyperLinkEscape blob))
-                              ,("extra", if isJust extra then
-                                   L.fillChildrenWith (L.subs [("content", L.rawTextFill (hyperLinkEscape $ maybe "" T.decodeUtf8 extra))]) else L.textFill "")])
-           "blob"
-
+    Nothing  -> return Nothing
+    Just bs ->
+      route ctxt [anything ==> \_ -> Permanode.toHtml (_store ctxt) (_db ctxt) (renderWith ctxt) sha bs
+                 ,anything ==> \_ -> do
+                     m <- magicOpen [MagicMimeType]
+                     magicLoadDefault m
+                     let b = BL.toStrict bs
+                     mime <- unsafeUseAsCStringLen b (magicCString m)
+                     let display = renderWith ctxt (L.subs [("content", L.rawTextFill (hyperLinkEscape (T.decodeUtf8 b)))]) "blob"
+                     case mime of
+                       "text/plain" -> display
+                       "text/html"  -> display
+                       _            -> rawH ctxt sha]
 
 rawH :: Ctxt -> SHA1 -> IO (Maybe Response)
 rawH ctxt sha@(SHA1 s) =
@@ -227,69 +231,6 @@ rawH ctxt sha@(SHA1 s) =
      case res' of
        Nothing  -> return Nothing
        Just res -> return $ Just $ responseLBS status200 [] res
-
-
--- NOTE(dbp 2015-11-05): This list taken from snap-core, BSD3 licensed.
-mimeMap :: Map String ByteString
-mimeMap =  M.fromList [
-  ( ".asc"     , "text/plain"                        ),
-  ( ".asf"     , "video/x-ms-asf"                    ),
-  ( ".asx"     , "video/x-ms-asf"                    ),
-  ( ".avi"     , "video/x-msvideo"                   ),
-  ( ".bz2"     , "application/x-bzip"                ),
-  ( ".c"       , "text/plain"                        ),
-  ( ".class"   , "application/octet-stream"          ),
-  ( ".conf"    , "text/plain"                        ),
-  ( ".cpp"     , "text/plain"                        ),
-  ( ".css"     , "text/css"                          ),
-  ( ".cxx"     , "text/plain"                        ),
-  ( ".dtd"     , "text/xml"                          ),
-  ( ".dvi"     , "application/x-dvi"                 ),
-  ( ".gif"     , "image/gif"                         ),
-  ( ".gz"      , "application/x-gzip"                ),
-  ( ".hs"      , "text/plain"                        ),
-  ( ".htm"     , "text/html"                         ),
-  ( ".html"    , "text/html"                         ),
-  ( ".ico"     , "image/x-icon"                      ),
-  ( ".jar"     , "application/x-java-archive"        ),
-  ( ".jpeg"    , "image/jpeg"                        ),
-  ( ".jpg"     , "image/jpeg"                        ),
-  ( ".js"      , "text/javascript"                   ),
-  ( ".json"    , "application/json"                  ),
-  ( ".log"     , "text/plain"                        ),
-  ( ".m3u"     , "audio/x-mpegurl"                   ),
-  ( ".mov"     , "video/quicktime"                   ),
-  ( ".mp3"     , "audio/mpeg"                        ),
-  ( ".mpeg"    , "video/mpeg"                        ),
-  ( ".mpg"     , "video/mpeg"                        ),
-  ( ".ogg"     , "application/ogg"                   ),
-  ( ".pac"     , "application/x-ns-proxy-autoconfig" ),
-  ( ".pdf"     , "application/pdf"                   ),
-  ( ".png"     , "image/png"                         ),
-  ( ".ps"      , "application/postscript"            ),
-  ( ".qt"      , "video/quicktime"                   ),
-  ( ".sig"     , "application/pgp-signature"         ),
-  ( ".spl"     , "application/futuresplash"          ),
-  ( ".svg"     , "image/svg+xml"                     ),
-  ( ".swf"     , "application/x-shockwave-flash"     ),
-  ( ".tar"     , "application/x-tar"                 ),
-  ( ".tar.bz2" , "application/x-bzip-compressed-tar" ),
-  ( ".tar.gz"  , "application/x-tgz"                 ),
-  ( ".tbz"     , "application/x-bzip-compressed-tar" ),
-  ( ".text"    , "text/plain"                        ),
-  ( ".tgz"     , "application/x-tgz"                 ),
-  ( ".torrent" , "application/x-bittorrent"          ),
-  ( ".ttf"     , "application/x-font-truetype"       ),
-  ( ".txt"     , "text/plain"                        ),
-  ( ".wav"     , "audio/x-wav"                       ),
-  ( ".wax"     , "audio/x-ms-wax"                    ),
-  ( ".wma"     , "audio/x-ms-wma"                    ),
-  ( ".wmv"     , "video/x-ms-wmv"                    ),
-  ( ".xbm"     , "image/x-xbitmap"                   ),
-  ( ".xml"     , "text/xml"                          ),
-  ( ".xpm"     , "image/x-xpixmap"                   ),
-  ( ".xwd"     , "image/x-xwindowdump"               ),
-  ( ".zip"     , "application/zip"                   ) ]
 
 renderIcon :: IO (Maybe Response)
 renderIcon = sendFile "static/icon.png"
@@ -301,38 +242,6 @@ thumbH ctxt sha =
        Nothing -> renderIcon
        Just jpg -> return $ Just $ responseBuilder status200 [(hContentType, "image/jpeg")] (Builder.fromByteString jpg)
 
-
-smartBlobH :: Ctxt -> SHA1 -> IO (Maybe Response)
-smartBlobH ctxt sha@(SHA1 s) =
-  do res' <- readBlob' (_store ctxt) sha
-     case res' of
-       Nothing  -> return Nothing
-       Just (Bytes bs) -> return $ Just $ responseLBS status200 [] bs
-       Just (FileBlob name ps) -> do
-         renderWith ctxt (L.subs [("name", L.textFill name)
-                                 ,("fileRef", L.textFill s)])
-           "file"
-       Just (EmailBlob from headers body) -> do
-         b <- readFileBytes (_store ctxt) body
-         let body = T.decodeUtf8 $ BL.toStrict $ Builder.toLazyByteString b
-         renderWith ctxt (L.subs
-                     [("from", L.textFill $ getHeader headers "From")
-                      ,("subject", L.textFill $ getHeader headers "Subject")
-                      ,("message-id", L.textFill $ getHeader headers "Message-ID")
-                      ,("date", L.textFill $ getHeader headers "Date")
-                      ,("body-content", L.textFill body)])
-           "email"
-  where getHeader hs h = let (Header _ v) = fromMaybe (Header "" "") $ listToMaybe $ filter (\(Header n v) -> n == h) hs in v
-
-fileH :: Ctxt -> SHA1 -> IO (Maybe Response)
-fileH ctxt sha =
-  do res' <- readBlob' (_store ctxt) sha
-     case res' of
-       Just (FileBlob name ps) -> do
-         let content = maybe [] (\c -> [(hContentType, c)]) $ M.lookup (takeExtension $ T.unpack name) mimeMap
-         builder <- readFileBytes (_store ctxt) ps
-         return $ Just $ responseBuilder status200 content builder
-       _ -> return Nothing
 
 uploadH :: Ctxt -> File -> IO (Maybe Response)
 uploadH ctxt f = do log' $ "Uploading " <> fileName f <> "..."
