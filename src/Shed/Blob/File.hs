@@ -129,7 +129,8 @@ readFileBytes store ps =
 
 addFile :: SomeBlobServer -> SomeIndexServer -> Key -> File -> IO ()
 addFile store serv key file = do
-  refs <- addChunks store (BL.toStrict $ fileContent file)
+  bs <- B.readFile (filePath file)
+  refs <- addChunks store bs
   let parts = map (uncurry Part) refs
   let fileblob = FileBlob (fileName file) parts
   let fileblob' = BL.toStrict $ encodePretty fileblob

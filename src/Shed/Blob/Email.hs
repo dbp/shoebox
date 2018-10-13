@@ -92,7 +92,8 @@ recognizeBlob store serv key file recognize =
 
 emailextract :: SomeBlobServer -> SomeIndexServer -> Key -> File -> IO ()
 emailextract store serv key f = do
-  let messages = parseMBox (TL.decodeUtf8 (fileContent f))
+  bs <- B.readFile (filePath f)
+  let messages = parseMBox (TL.decodeUtf8 (BL.fromStrict bs))
   mapM_ (\m -> do log' $ "Adding email '" <> TL.toStrict (fromLine m) <> "'."
                   brefs <- File.addChunks store (BL.toStrict $ TL.encodeUtf8 $ body m)
                   let email = EmailBlob (TL.toStrict $ fromLine m)

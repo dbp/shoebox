@@ -1,4 +1,4 @@
-resolver: lts-8.15
+resolver: lts-9.21
 packages:
 - '.'
 - location:
@@ -10,6 +10,5 @@ packages:
     commit: 098ba00ae02ae3a55a2b918327623e6f6e19d478
   extra-dep: true
 extra-deps:
-- logging-3.0.4
-- html-entities-1.1.4
-- zip-conduit-0.2.2.2
+- html-entities-1.1.4.2
+- logging-3.0.5

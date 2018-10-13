@@ -56,10 +56,15 @@ unzipper store serv key f p =
     m <- magicOpen [MagicMimeType]
     magicLoadDefault m
     withTempFile "tmp" "zip." $ \tmpFile hFile -> do
-      B.hPut hFile (BL.toStrict $ fileContent f)
+      bs <- B.readFile (filePath f)
+      B.hPut hFile bs
       hClose hFile
       withArchive tmpFile $ do
         names <- entryNames
         mapM_ (\n -> do bs <- sourceEntry n $ CB.sinkLbs
                         mime <- liftIO $ unsafeUseAsCStringLen (BL.toStrict bs) (magicCString m)
-                        liftIO $ p (File (T.pack n) (T.pack mime) bs)) names
+                        liftIO $ withTempFile "tmp" ("zip-" <> (show n) <> ".") $ \tmpFile hFile -> do
+                          B.hPut hFile (BL.toStrict bs)
+                          hClose hFile
+                          p (File (T.pack n) (T.pack mime) tmpFile))
+          names
