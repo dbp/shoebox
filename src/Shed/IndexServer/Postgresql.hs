@@ -18,58 +18,47 @@ import           Shed.Types
 
 newtype PostgresIndexer = PG { unPostgresIndexer :: Connection }
 
-instance FromField SHA1 where
-  fromField f b = SHA1 <$> fromField f b
+instance FromField SHA224 where
+  fromField f b = SHA224 <$> fromField f b
 
-instance ToField SHA1 where
-  toField (SHA1 a) = toField a
+instance ToField SHA224 where
+  toField (SHA224 a) = toField a
 
 instance FromField (M.Map Text Text) where
   fromField = fromJSONField
 
-instance FromRow Permanode where
-  fromRow = Permanode <$> field
-                      <*> field
-                      <*> field
-                      <*> field
+instance FromRow Item where
+  fromRow = Item <$> field
+                 <*> field
+                 <*> field
 
 
 instance IndexServer PostgresIndexer where
-  wipe (PG conn) = void $ execute_ conn "delete from permanodes"
+  wipe (PG conn) = void $ execute_ conn "delete from items"
 
-  makePermanode (PG conn) sha =
-    void $ execute conn "INSERT INTO permanodes (sha1) VALUES (?) ON CONFLICT DO NOTHING" (Only sha)
+  makeItem (PG conn) sha =
+    void $ execute conn "INSERT INTO items (blob_ref) VALUES (?) ON CONFLICT DO NOTHING" (Only sha)
 
-  setPermanodeAttribute (PG conn) sha k v =
-    void $ execute conn "UPDATE permanodes SET attributes = jsonb_set(attributes, ARRAY[?], ?) WHERE sha1 = ?" (k,String v,sha)
+  setSearchHigh (PG conn) (SHA224 sha) text =
+    void $ execute conn "UPDATE items SET search_high = ? WHERE attributes->'camliContent' = ?" (text, String sha)
 
-  permanodeHasContent (PG conn) (SHA1 sha) =
-    do Just (Only n) <- listToMaybe <$> query conn "SELECT COUNT(*) FROM permanodes WHERE attributes->'camliContent' = ?" (Only (String sha))
-       return (n > (0 :: Int))
+  setSearchLow (PG conn) (SHA224 sha) text =
+    void $ execute conn "UPDATE items SET search_low = ? WHERE attributes->'camliContent' = ?" (text, String sha)
 
-  setPermanodeShowInUI (PG conn) (SHA1 sha) =
-    void $ execute conn "UPDATE permanodes SET show_in_ui = true WHERE attributes->'camliContent' = ?" (Only (String sha))
+  setThumbnail (PG conn) (SHA224 sha) jpg =
+     void $ execute conn "UPDATE items SET thumbnail = ? WHERE attributes->'camliContent' = ?" (Binary jpg, String sha)
 
-  setSearchHigh (PG conn) (SHA1 sha) text =
-    void $ execute conn "UPDATE permanodes SET search_high = ? WHERE attributes->'camliContent' = ?" (text, String sha)
+  setPreview (PG conn) (SHA224 sha) prev =
+    void $ execute conn "UPDATE items SET preview = ? WHERE attributes->'camliContent' = ?" (prev, String sha)
 
-  setSearchLow (PG conn) (SHA1 sha) text =
-    void $ execute conn "UPDATE permanodes SET search_low = ? WHERE attributes->'camliContent' = ?" (text, String sha)
+  getItem (PG conn) (SHA224 sha) = listToMaybe <$> query conn "SELECT blob_ref, thumbnail, preview FROM items WHERE blob_ref = ?" (Only sha)
 
-  setPermanodeThumbnail (PG conn) (SHA1 sha) jpg =
-     void $ execute conn "UPDATE permanodes SET thumbnail = ? WHERE attributes->'camliContent' = ?" (Binary jpg, String sha)
+  getItems (PG conn) page = query conn "SELECT blob_ref,  thumbnail, preview FROM items WHERE show_in_ui = true ORDER BY blob_ref DESC LIMIT 100 OFFSET ?" (Only (100 * page))
 
-  setPermanodePreview (PG conn) (SHA1 sha) prev =
-    void $ execute conn "UPDATE permanodes SET preview = ? WHERE attributes->'camliContent' = ?" (prev, String sha)
+  search (PG conn) t = query conn "SELECT blob_ref, thumbnail, preview FROM items WHERE (setweight(to_tsvector(items.search_high),'A') || setweight(to_tsvector(items.search_low), 'B')) @@ to_tsquery('english', ?) ORDER BY ts_rank((setweight(to_tsvector(items.search_high),'A') || setweight(to_tsvector(items.search_low), 'B')), to_tsquery('english', ?)) DESC" (t,t)
 
-  getPermanode (PG conn) (SHA1 sha) = listToMaybe <$> query conn "SELECT sha1, attributes, thumbnail, preview FROM permanodes WHERE sha1 = ?" (Only sha)
-
-  getPermanodes (PG conn) page = query conn "SELECT sha1, attributes, thumbnail, preview FROM permanodes WHERE show_in_ui = true ORDER BY sha1 DESC LIMIT 100 OFFSET ?" (Only (100 * page))
-
-  search (PG conn) t = query conn "SELECT sha1, attributes, thumbnail, preview FROM permanodes WHERE (setweight(to_tsvector(permanodes.search_high),'A') || setweight(to_tsvector(permanodes.search_low), 'B')) @@ to_tsquery('english', ?) ORDER BY ts_rank((setweight(to_tsvector(permanodes.search_high),'A') || setweight(to_tsvector(permanodes.search_low), 'B')), to_tsquery('english', ?)) DESC" (t,t)
-
-  getThumbnail (PG conn) (SHA1 sha) =
-    do res <- listToMaybe <$> query conn "SELECT thumbnail FROM permanodes WHERE sha1 = ?" (Only sha)
+  getThumbnail (PG conn) (SHA224 sha) =
+    do res <- listToMaybe <$> query conn "SELECT thumbnail FROM items WHERE blob_ref = ?" (Only sha)
        case res of
          Nothing                  -> return Nothing
          Just (Only (Binary jpg)) -> return (Just jpg)

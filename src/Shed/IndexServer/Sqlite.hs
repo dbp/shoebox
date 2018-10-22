@@ -22,11 +22,11 @@ import           Shed.Types
 
 newtype SqliteIndexer = SL { unSqliteIndexer :: Connection }
 
-instance FromField SHA1 where
-  fromField f = SHA1 <$> fromField f
+instance FromField SHA224 where
+  fromField f = SHA224 <$> fromField f
 
-instance ToField SHA1 where
-  toField (SHA1 a) = toField a
+instance ToField SHA224 where
+  toField (SHA224 a) = toField a
 
 instance FromField (M.Map Text Text) where
   fromField f = case fromField f of
@@ -35,59 +35,41 @@ instance FromField (M.Map Text Text) where
                             Nothing -> Errors []
                   Errors es -> Errors es
 
-instance FromRow Permanode where
-  fromRow = Permanode <$> field
-                      <*> field
-                      <*> field
-                      <*> field
+instance FromRow Item where
+  fromRow = Item <$> field
+                 <*> field
+                 <*> field
 
 
 instance ToField Value where
   toField v = toField (encode v)
 
 instance IndexServer SqliteIndexer where
-  wipe (SL conn) = void $ execute_ conn "DELETE FROM permanodes"
+  wipe (SL conn) = void $ execute_ conn "DELETE FROM items"
 
-  makePermanode (SL conn) sha =
-    void $ execute conn "INSERT OR IGNORE INTO permanodes (sha1) VALUES (?)" (Only sha)
+  makeItem (SL conn) sha =
+    void $ execute conn "INSERT OR IGNORE INTO items (blob_ref) VALUES (?)" (Only sha)
 
-  setPermanodeAttribute (SL conn) sha k v = do
-    mn <- getPermanode (SL conn) sha
-    case mn of
-      Nothing -> return ()
-      Just node -> do
-        let attrs = M.insert k v (attributes node)
-        execute conn "UPDATE permanodes SET attributes = ? WHERE sha1 = ?" (T.decodeUtf8 $ BL.toStrict $ encode attrs, sha)
-        when (k == "camliContent") $
-          void $ execute conn "UPDATE permanodes SET content = ? WHERE sha1 = ?" (v, sha)
+  setSearchHigh (SL conn) (SHA224 sha) text =
+    void $ execute conn "UPDATE items SET search_high = ? WHERE blob_ref = ?" (text, sha)
 
-  permanodeHasContent (SL conn) (SHA1 sha) =
-    do Just (Only n) <- listToMaybe <$> query conn "SELECT COUNT(*) FROM permanodes WHERE content = ?" (Only sha)
-       return (n > (0 :: Int))
+  setSearchLow (SL conn) (SHA224 sha) text =
+    void $ execute conn "UPDATE items SET search_low = ? WHERE blob_ref = ?" (text, sha)
 
-  setPermanodeShowInUI (SL conn) (SHA1 sha) =
-    void $ execute conn "UPDATE permanodes SET show_in_ui = 1 WHERE content = ?" (Only sha)
+  setThumbnail (SL conn) (SHA224 sha) jpg =
+     void $ execute conn "UPDATE items SET thumbnail = ? WHERE blob_ref = ?" (jpg, sha)
 
-  setSearchHigh (SL conn) (SHA1 sha) text =
-    void $ execute conn "UPDATE permanodes SET search_high = ? WHERE content = ?" (text, sha)
+  setPreview (SL conn) (SHA224 sha) prev =
+    void $ execute conn "UPDATE items SET preview = ? WHERE blob_ref = ?" (prev, sha)
 
-  setSearchLow (SL conn) (SHA1 sha) text =
-    void $ execute conn "UPDATE permanodes SET search_low = ? WHERE content = ?" (text, sha)
+  getItem (SL conn) (SHA224 sha) = listToMaybe <$> query conn "SELECT blob_ref, thumbnail, preview FROM items WHERE blob_ref = ?" (Only sha)
 
-  setPermanodeThumbnail (SL conn) (SHA1 sha) jpg =
-     void $ execute conn "UPDATE permanodes SET thumbnail = ? WHERE content = ?" (jpg, sha)
+  getItems (SL conn) page = query conn "SELECT blob_ref, thumbnail, preview FROM items ORDER BY blob_ref DESC LIMIT 100 OFFSET ?" (Only (100 * page))
 
-  setPermanodePreview (SL conn) (SHA1 sha) prev =
-    void $ execute conn "UPDATE permanodes SET preview = ? WHERE content = ?" (prev, sha)
+  search (SL conn) t = query conn "SELECT blob_ref, thumbnail, preview FROM items WHERE search_high LIKE ? OR search_low LIKE ?" ("%"<>t<>"%","%"<>t<>"%")
 
-  getPermanode (SL conn) (SHA1 sha) = listToMaybe <$> query conn "SELECT sha1, attributes, thumbnail, preview FROM permanodes WHERE sha1 = ?" (Only sha)
-
-  getPermanodes (SL conn) page = query conn "SELECT sha1, attributes, thumbnail, preview FROM permanodes WHERE show_in_ui = 1 ORDER BY sha1 DESC LIMIT 100 OFFSET ?" (Only (100 * page))
-
-  search (SL conn) t = query conn "SELECT sha1, attributes, thumbnail, preview FROM permanodes WHERE search_high LIKE ? OR search_low LIKE ?" ("%"<>t<>"%","%"<>t<>"%")
-
-  getThumbnail (SL conn) (SHA1 sha) =
-    do res <- listToMaybe <$> query conn "SELECT thumbnail FROM permanodes WHERE sha1 = ?" (Only sha)
+  getThumbnail (SL conn) (SHA224 sha) =
+    do res <- listToMaybe <$> query conn "SELECT thumbnail FROM items WHERE blob_ref = ?" (Only sha)
        case res of
          Nothing         -> return Nothing
          Just (Only jpg) -> return (Just jpg)

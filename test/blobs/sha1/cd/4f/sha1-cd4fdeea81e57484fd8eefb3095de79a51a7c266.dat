@@ -1,9 +1,0 @@
-{"camliVersion":1,
-	"camliType": "claim",
-	"permaNode": "sha1-6afb3c22f57a299962733d2349c2558b2d982c47",
-	"claimType": "set-attribute",
-	"claimDate": "2017-05-27T21:46:24Z",
-	"attribute": "camliContent",
-	"value": "sha1-b322691d600f815c6fb52d9d5baeaf36807c4d80",
-	"camliSigner": "sha1-9fa56b395623c6b5e28842dd05a87c8982b33738"
-,"camliSig":"wsBcBAABCAAQBQKIbgkACRDp0kypMwMn8AAA3cQIALfkpHEcjf9z29AE7dwouwTku0qEJLfdHn8/Zmf+QH1cZPVKaqWsvaUE17/C+FWm2WdP8v1JjTbQwRc7lE7iiSrp5FbhIqxBLkbIKDix94qRURfRsL8yqcH4J0k0Sz6Em30ERlSAJDM95JNiFiXOg2ub5e03XgdmCyAsBIUcCuNKVGKdZpeHg2E99jQ0K/h5K8/GGqh86a1OnkIWHWFoVSXy0U+WbnS5TE2q30MvxX1RJBbhQSzbOaSIXffQQFcIgFPwXRZ3m8UGVwF120ft9DJqRP3LJaey3j3J7qPDKEbklbWubayD3h2L40RWEUYj29A6ENsT6gKDyqhELabTZJs==7udj"}

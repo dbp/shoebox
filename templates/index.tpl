@@ -1,11 +1,10 @@
 <apply template="_base">
   <ul>
-    <permanodes>
+    <items>
       <li class="file">
-        <a class="info" href="/blob/${permanodeRef}"></a>
         <a class="thumb" href="/${contentRef}">
           <has-thumbnail>
-            <img src="/static/icon.png" data-layzr="/${permanodeRef}/thumb"/>
+            <img src="/static/icon.png" data-layzr="/${contentRef}/thumb"/>
           </has-thumbnail>
           <has-preview>
             <div class="preview">
@@ -14,7 +13,7 @@
           </has-preview>
         </a>
       </li>
-    </permanodes>
+    </items>
   </ul>
   <has-more>
     <a href='?page=${next-page}'>More</a>

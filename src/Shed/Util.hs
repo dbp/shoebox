@@ -17,4 +17,4 @@ rawBlob bs = return $ Just $ responseLBS status200 [] bs
 hyperLinkEscape :: Text -> Text
 hyperLinkEscape t =
   replaceAll "<a href=\"/blob/${sha}\">${sha}</a>" $
-    (HE.text t) *=~ [re|${sha}(sha1-[0-9a-f]{40})|]
+    (HE.text t) *=~ [re|${sha}(sha224-[0-9a-f]{56})|]

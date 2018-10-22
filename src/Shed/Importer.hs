@@ -28,7 +28,6 @@ import           Web.Fn                     (File (..))
 
 import qualified Shed.Blob.Email            as Email
 import qualified Shed.Blob.File             as File
-import qualified Shed.Blob.Permanode        as Permanode
 import           Shed.BlobServer
 import           Shed.Indexer
 import           Shed.IndexServer
@@ -39,8 +38,7 @@ isBoringFile f = "__MACOSX" `T.isPrefixOf` fileName f || ".DS_STORE" == fileName
 
 importers :: [SomeBlobServer -> SomeIndexServer -> Key -> File -> (File -> IO ()) -> IO ()]
 importers =
-  [ Permanode.recognizeBlob
-  , File.recognizeBlob
+  [ File.recognizeBlob
   , Email.recognizeBlob
   , unzipper
   ]

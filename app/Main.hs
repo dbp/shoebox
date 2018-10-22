@@ -45,7 +45,6 @@ import qualified Web.Larceny                 as L
 
 import qualified Shed.Blob.Email             as Email
 import qualified Shed.Blob.File              as File
-import qualified Shed.Blob.Permanode         as Permanode
 import           Shed.BlobServer
 import           Shed.BlobServer.Directory
 import           Shed.BlobServer.Memory
@@ -122,8 +121,8 @@ main = withStderrLogging $
   do ctxt <- initializer
      runEnv 3000 $ toWAI ctxt site
 
-instance FromParam SHA1 where
-  fromParam [x] | "sha1-" `T.isPrefixOf` x = Right $ SHA1 x
+instance FromParam SHA224 where
+  fromParam [x] | "sha224-" `T.isPrefixOf` x = Right $ SHA224 x
   fromParam []  = Left ParamMissing
   fromParam _   = Left ParamTooMany
 
@@ -147,10 +146,9 @@ site ctxt = do
                        Just r' -> return r'
                        Nothing -> notFoundText "Page not found"
 
-permanodeSubs :: Permanode -> Substitutions
-permanodeSubs (Permanode (SHA1 sha) attrs thumb prev) =
-  L.subs [("permanodeRef", L.textFill sha)
-         ,("contentRef", L.textFill $ attrs M.! "camliContent")
+itemSubs :: Item -> Substitutions
+itemSubs (Item (SHA224 sha) thumb prev) =
+  L.subs [("contentRef", L.textFill sha)
          ,("has-thumbnail", justFill thumb)
          ,("no-thumbnail", nothingFill thumb)
          ,("has-preview", justFill prev)
@@ -161,23 +159,23 @@ permanodeSubs (Permanode (SHA1 sha) attrs thumb prev) =
 
 indexH :: Ctxt -> Maybe Int -> IO (Maybe Response)
 indexH ctxt page = do
-  ps <- getPermanodes (_db ctxt) (fromMaybe 0 page)
+  is <- getItems (_db ctxt) (fromMaybe 0 page)
   renderWith ctxt
     (L.subs [("has-more", L.fillChildren)
             ,("next-page", L.textFill $ maybe "1" (T.pack . show . (+1)) page)
-            ,("permanodes", L.mapSubs permanodeSubs ps)
+            ,("items", L.mapSubs itemSubs is)
             ,("q", L.textFill "")])
     "index"
 
 searchH :: Ctxt -> Text -> IO (Maybe Response)
 searchH ctxt q = do
   if T.strip q == "" then redirect "/" else do
-    ps <- search (_db ctxt) q
-    if length ps == 0 then redirect "/" else
+    is <- search (_db ctxt) q
+    if length is == 0 then redirect "/" else
       renderWith ctxt
         (L.subs [("has-more", L.textFill "")
                 ,("q", L.textFill q)
-                ,("permanodes", L.mapSubs permanodeSubs ps)])
+                ,("items", L.mapSubs itemSubs is)])
         "index"
 
 reindexH :: Ctxt -> IO (Maybe Response)
@@ -193,7 +191,7 @@ wipeH ctxt = do
 mmsum :: (Monad f, MonadPlus m, Foldable t) => t (f (m a)) -> f (m a)
 mmsum = foldl (liftA2 mplus) (return mzero)
 
-renderH :: Ctxt -> SHA1 -> IO (Maybe Response)
+renderH :: Ctxt -> SHA224 -> IO (Maybe Response)
 renderH ctxt sha = do
   res' <- readBlob (_store ctxt) sha
   case res' of
@@ -207,14 +205,13 @@ renderH ctxt sha = do
       (blobH ctxt sha)
 
 
-blobH :: Ctxt -> SHA1 -> IO (Maybe Response)
+blobH :: Ctxt -> SHA224 -> IO (Maybe Response)
 blobH ctxt sha = do
   res' <- readBlob (_store ctxt) sha
   case res' of
     Nothing  -> return Nothing
     Just bs ->
-      route ctxt [anything ==> \_ -> Permanode.toHtml (_store ctxt) (_db ctxt) (renderWith ctxt) sha bs
-                 ,anything ==> \_ -> do
+      route ctxt [anything ==> \_ -> do
                      m <- magicOpen [MagicMimeType]
                      magicLoadDefault m
                      let b = BL.toStrict bs
@@ -225,8 +222,8 @@ blobH ctxt sha = do
                        "text/html"  -> display
                        _            -> rawH ctxt sha]
 
-rawH :: Ctxt -> SHA1 -> IO (Maybe Response)
-rawH ctxt sha@(SHA1 s) =
+rawH :: Ctxt -> SHA224 -> IO (Maybe Response)
+rawH ctxt sha@(SHA224 s) =
   do res' <- readBlob (_store ctxt) sha
      case res' of
        Nothing  -> return Nothing
@@ -235,7 +232,7 @@ rawH ctxt sha@(SHA1 s) =
 renderIcon :: IO (Maybe Response)
 renderIcon = sendFile "static/icon.png"
 
-thumbH :: Ctxt -> SHA1 -> IO (Maybe Response)
+thumbH :: Ctxt -> SHA224 -> IO (Maybe Response)
 thumbH ctxt sha =
   do res <- getThumbnail (_db ctxt) sha
      case res of

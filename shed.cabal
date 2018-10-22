@@ -28,14 +28,14 @@ library
                      , Shed.IndexServer.Sqlite
                      , Shed.Blob.Email
                      , Shed.Blob.File
-                     , Shed.Blob.Permanode
                      , Shed.Util
   c-sources:           src/Shed/Images.c
 
   cc-options:          -Wall -O2
   extra-libraries:     exif
   build-depends:       base >= 4.7 && < 5
-                     , cryptohash-sha1
+                     , cryptonite
+                     , memory
                      , text
                      , bytestring
                      , directory

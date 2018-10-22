@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections     #-}
--- This module contains logic pertaining to camliType "file"
+-- This module contains logic pertaining to type "file"
 module Shed.Blob.File where
 
 import           Control.Monad
@@ -28,14 +28,13 @@ import           System.FilePath          (takeExtension)
 import           Web.Fn                   (File (..))
 import qualified Web.Larceny              as L
 
-import qualified Shed.Blob.Permanode      as Permanode
 import           Shed.BlobServer
 import           Shed.Images
 import           Shed.IndexServer
 import           Shed.Types
 import           Shed.Util
 
-data Part = Part SHA1 Int deriving Show
+data Part = Part SHA224 Int deriving Show
 
 instance FromJSON Part where
   parseJSON (Object v) = Part <$> v .: "blobRef"
@@ -53,7 +52,7 @@ data FileBlob = FileBlob { fName  :: Text
 
 instance FromJSON FileBlob where
     parseJSON (Object v) =
-      do t <- v .: "camliType"
+      do t <- v .: "type"
          if t == ("file" :: Text) then
            FileBlob <$> v .: "fileName"
                     <*> v .: "parts"
@@ -63,36 +62,34 @@ instance FromJSON FileBlob where
 
 instance ToJSON FileBlob where
   toJSON (FileBlob name parts) =
-    object ["camliVersion" .= (1 :: Int)
-           ,"camliType" .= ("file" :: Text)
+    object ["version" .= (1 :: Int)
+           ,"type" .= ("file" :: Text)
            ,"fileName" .= name
            ,"parts" .= parts]
 
-indexBlob :: SomeBlobServer -> SomeIndexServer -> SHA1 -> FileBlob -> IO ()
+indexBlob :: SomeBlobServer -> SomeIndexServer -> SHA224 -> FileBlob -> IO ()
 indexBlob store serv sha (FileBlob name parts) = do
-  exists <- permanodeHasContent serv sha
-  when exists $ do
-    setPermanodeShowInUI serv sha
-    setSearchHigh serv sha name
-    builder <- readFileBytes store parts
-    let dat = BL.toStrict $ Builder.toLazyByteString builder
-    res <- getExifThumbnail dat
-    case res of
-      Nothing  ->
-        do m <- magicOpen [MagicMimeType]
-           magicLoadDefault m
-           mime <- unsafeUseAsCStringLen dat (magicCString m)
-           let mkThumb = do
-                thm <- createThumbnail dat
-                case thm of
-                  Nothing  -> return ()
-                  Just jpg ->
-                    setPermanodeThumbnail serv sha (BL.toStrict jpg)
-           case mime of
-             "image/jpeg" -> mkThumb
-             "image/png"  -> mkThumb
-             _            -> return ()
-      Just jpg -> setPermanodeThumbnail serv sha jpg
+  makeItem serv sha
+  setSearchHigh serv sha name
+  builder <- readFileBytes store parts
+  let dat = BL.toStrict $ Builder.toLazyByteString builder
+  res <- getExifThumbnail dat
+  case res of
+    Nothing  ->
+      do m <- magicOpen [MagicMimeType]
+         magicLoadDefault m
+         mime <- unsafeUseAsCStringLen dat (magicCString m)
+         let mkThumb = do
+              thm <- createThumbnail dat
+              case thm of
+                Nothing  -> return ()
+                Just jpg ->
+                  setThumbnail serv sha (BL.toStrict jpg)
+         case mime of
+           "image/jpeg" -> mkThumb
+           "image/png"  -> mkThumb
+           _            -> return ()
+    Just jpg -> setThumbnail serv sha jpg
 
 recognizeBlob :: SomeBlobServer -> SomeIndexServer -> Key -> File -> (File -> IO ()) -> IO ()
 recognizeBlob store serv key file recognize =
@@ -106,10 +103,11 @@ recognizeBlob store serv key file recognize =
              ext     -> return ()
 
 
+-- 16MB chunk size
 chunkSize :: Int
-chunkSize = 1000000
+chunkSize = 16000000
 
-addChunks :: SomeBlobServer -> ByteString -> IO [(SHA1, Int)]
+addChunks :: SomeBlobServer -> ByteString -> IO [(SHA224, Int)]
 addChunks store bs = do
   let chunks = splitEvery chunkSize bs
   mapM (\p -> (,B.length p) <$> writeBlob store p) chunks
@@ -136,15 +134,11 @@ addFile store serv key file = do
   let fileblob' = BL.toStrict $ encodePretty fileblob
   exists <- statBlob store fileblob'
   if exists then return () else do
-    (SHA1 fref) <- writeBlob store fileblob'
-    (pref, permablob) <- Permanode.addPermanode store key
-    (cref, claimblob) <- Permanode.setAttribute store key pref "camliContent" fref
-    Permanode.indexBlob store serv pref permablob
-    Permanode.indexBlob store serv cref claimblob
-    indexBlob store serv (SHA1 fref) fileblob
+    (SHA224 fref) <- writeBlob store fileblob'
+    indexBlob store serv (SHA224 fref) fileblob
 
-toHtml :: SomeBlobServer -> SomeIndexServer -> (L.Substitutions () -> Text -> IO (Maybe Response)) -> SHA1 -> BL.ByteString -> IO (Maybe Response)
-toHtml store serv renderWith (SHA1 sha) bs =
+toHtml :: SomeBlobServer -> SomeIndexServer -> (L.Substitutions () -> Text -> IO (Maybe Response)) -> SHA224 -> BL.ByteString -> IO (Maybe Response)
+toHtml store serv renderWith (SHA224 sha) bs =
   case decode bs of
     Just (FileBlob name ps) -> do
       renderWith (L.subs [("name", L.textFill name)
@@ -152,7 +146,7 @@ toHtml store serv renderWith (SHA1 sha) bs =
         "file"
     _ -> return Nothing
 
-serve :: SomeBlobServer -> SHA1 -> IO (Maybe Response)
+serve :: SomeBlobServer -> SHA224 -> IO (Maybe Response)
 serve store sha = do
   bs <- readBlob store sha
   case decode =<< bs of

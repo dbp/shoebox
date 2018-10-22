@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
--- This module contains logic pertaining to camliType "email"
+-- This module contains logic pertaining to type "email"
 module Shed.Blob.Email where
 
 import           Control.Arrow            ((***))
@@ -28,7 +28,6 @@ import           Web.Fn                   (File (..))
 import qualified Web.Larceny              as L
 
 import qualified Shed.Blob.File           as File
-import qualified Shed.Blob.Permanode      as Permanode
 import           Shed.BlobServer
 import           Shed.IndexServer
 import           Shed.Types
@@ -51,7 +50,7 @@ getHeader hs k = (\(Header _ v) -> v) <$> listToMaybe (filter (\(Header k' _) ->
 data EmailBlob = EmailBlob Text [Header] [File.Part]
 
 instance FromJSON EmailBlob where
-  parseJSON (Object v) = (do t <- v .: "camliType"
+  parseJSON (Object v) = (do t <- v .: "type"
                              if t == ("email" :: Text) then
                                EmailBlob <$> v .: "from"
                                          <*> v .: "headers"
@@ -62,27 +61,25 @@ instance FromJSON EmailBlob where
 
 instance ToJSON EmailBlob where
   toJSON (EmailBlob from headers body) =
-    object ["camliVersion" .= (1 :: Int)
-           ,"camliType" .= ("email" :: Text)
+    object ["version" .= (1 :: Int)
+           ,"type" .= ("email" :: Text)
            ,"from" .= from
            ,"headers" .= headers
            ,"body" .= body]
 
-indexBlob :: SomeBlobServer -> SomeIndexServer -> SHA1 -> EmailBlob -> IO ()
+indexBlob :: SomeBlobServer -> SomeIndexServer -> SHA224 -> EmailBlob -> IO ()
 indexBlob store serv sha (EmailBlob from headers body) = do
-  exists <- permanodeHasContent serv sha
-  when exists $ do
-    setPermanodeShowInUI serv sha
-    setSearchHigh serv sha $
-      T.concat [fromMaybe "" $ getHeader headers "From", "\n"
-               ,fromMaybe "" $ getHeader headers "Subject", "\n"]
-    b <- File.readFileBytes store body
-    let body' = T.decodeUtf8 $ BL.toStrict $ Builder.toLazyByteString b
-    setSearchLow serv sha body'
-    let preview = (maybe "" (<> "\n") (getHeader headers "Subject"))
-               <> (maybe "" (\x -> "From: " <> x <> "\n") (getHeader headers "From"))
-               <> (maybe "" (\x -> "Date: " <> x <> "\n") (getHeader headers "Date"))
-    setPermanodePreview serv sha preview
+  makeItem serv sha
+  setSearchHigh serv sha $
+    T.concat [fromMaybe "" $ getHeader headers "From", "\n"
+             ,fromMaybe "" $ getHeader headers "Subject", "\n"]
+  b <- File.readFileBytes store body
+  let body' = T.decodeUtf8 $ BL.toStrict $ Builder.toLazyByteString b
+  setSearchLow serv sha body'
+  let preview = (maybe "" (<> "\n") (getHeader headers "Subject"))
+             <> (maybe "" (\x -> "From: " <> x <> "\n") (getHeader headers "From"))
+             <> (maybe "" (\x -> "Date: " <> x <> "\n") (getHeader headers "Date"))
+  setPreview serv sha preview
 
 recognizeBlob :: SomeBlobServer -> SomeIndexServer -> Key -> File -> (File -> IO ()) -> IO ()
 recognizeBlob store serv key file recognize =
@@ -102,16 +99,12 @@ emailextract store serv key f = do
                   let emailblob = BL.toStrict $ encodePretty email
                   exists <- statBlob store emailblob
                   if exists then return () else do
-                    (SHA1 eref) <- writeBlob store emailblob
-                    (pref, permablob) <- Permanode.addPermanode store key
-                    (cref, claimblob) <- Permanode.setAttribute store key pref "camliContent" eref
-                    Permanode.indexBlob store serv pref permablob
-                    Permanode.indexBlob store serv cref claimblob
-                    indexBlob store serv (SHA1 eref) email
+                    (SHA224 eref) <- writeBlob store emailblob
+                    indexBlob store serv (SHA224 eref) email
         ) messages
 
 
-toHtml :: SomeBlobServer -> SomeIndexServer -> (L.Substitutions () -> Text -> IO (Maybe Response)) -> SHA1 -> BL.ByteString -> IO (Maybe Response)
+toHtml :: SomeBlobServer -> SomeIndexServer -> (L.Substitutions () -> Text -> IO (Maybe Response)) -> SHA224 -> BL.ByteString -> IO (Maybe Response)
 toHtml store serv renderWith sha bs = do
   case decode bs of
     Just (EmailBlob from headers body) -> do
