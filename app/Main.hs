@@ -36,7 +36,7 @@ import           Network.Wai                 (Response, rawPathInfo,
                                               requestMethod, responseBuilder,
                                               responseLBS)
 import           Network.Wai.Handler.Warp    (runEnv)
-import           System.Environment          (getEnv, lookupEnv)
+import           System.Environment          (lookupEnv)
 import           System.FilePath             (takeExtension)
 import           Text.RE.Replace
 import           Text.RE.TDFA.Text
@@ -67,7 +67,6 @@ data Ctxt = Ctxt { _req     :: FnRequest
                  , _store   :: SomeBlobServer
                  , _db      :: SomeIndexServer
                  , _library :: Library
-                 , _key     :: Key
                  }
 instance RequestContext Ctxt where
   getRequest = _req
@@ -109,12 +108,8 @@ initializer = do
                                 index store serv
                                 index store serv
                                 return (serv, ":memory:")
-  keyid <- T.pack <$> getEnv "KEY"
-  keyblob <- getPubKey keyid
-  ref <- writeBlob store keyblob
-  let key = Key keyid ref
   log' $ "Opening the Shoebox [Blobs " <> pth <> " Index " <> nm <> "]"
-  return (Ctxt defaultFnRequest store serv lib key)
+  return (Ctxt defaultFnRequest store serv lib)
 
 main :: IO ()
 main = withStderrLogging $
@@ -242,5 +237,5 @@ thumbH ctxt sha =
 
 uploadH :: Ctxt -> File -> IO (Maybe Response)
 uploadH ctxt f = do log' $ "Uploading " <> fileName f <> "..."
-                    process (_store ctxt) (_db ctxt) (_key ctxt)  f
+                    process (_store ctxt) (_db ctxt)  f
                     okText "OK"

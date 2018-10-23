@@ -36,20 +36,20 @@ import           Shoebox.Types
 isBoringFile :: File -> Bool
 isBoringFile f = "__MACOSX" `T.isPrefixOf` fileName f || ".DS_STORE" == fileName f
 
-importers :: [SomeBlobServer -> SomeIndexServer -> Key -> File -> (File -> IO ()) -> IO ()]
+importers :: [SomeBlobServer -> SomeIndexServer -> File -> (File -> IO ()) -> IO ()]
 importers =
   [ File.recognizeBlob
   , Email.recognizeBlob
   , unzipper
   ]
 
-process :: SomeBlobServer -> SomeIndexServer -> Key  -> File -> IO ()
-process store serv key f =
+process :: SomeBlobServer -> SomeIndexServer -> File -> IO ()
+process store serv f =
   if isBoringFile f then return () else
-    mapM_ (\imp -> imp store serv key f (process store serv key)) importers
+    mapM_ (\imp -> imp store serv f (process store serv)) importers
 
-unzipper :: SomeBlobServer -> SomeIndexServer -> Key -> File -> (File -> IO ()) -> IO ()
-unzipper store serv key f p =
+unzipper :: SomeBlobServer -> SomeIndexServer -> File -> (File -> IO ()) -> IO ()
+unzipper store serv f p =
   when (fileContentType f == "application/zip" || (map toLower $ takeExtension (T.unpack $ fileName f)) == ".zip") $ do
     m <- magicOpen [MagicMimeType]
     magicLoadDefault m

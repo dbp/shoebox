@@ -91,15 +91,15 @@ indexBlob store serv sha (FileBlob name parts) = do
            _            -> return ()
     Just jpg -> setThumbnail serv sha jpg
 
-recognizeBlob :: SomeBlobServer -> SomeIndexServer -> Key -> File -> (File -> IO ()) -> IO ()
-recognizeBlob store serv key file recognize =
+recognizeBlob :: SomeBlobServer -> SomeIndexServer -> File -> (File -> IO ()) -> IO ()
+recognizeBlob store serv file recognize =
   case fileContentType file of
-    "image/jpeg" -> addFile store serv key file
-    "image/png" -> addFile store serv key file
+    "image/jpeg" -> addFile store serv file
+    "image/png" -> addFile store serv file
     typ -> case map toLower $ takeExtension (T.unpack $ fileName file) of
-             ".jpg"  -> addFile store serv key file
-             ".jpeg" -> addFile store serv key file
-             ".png"  -> addFile store serv key file
+             ".jpg"  -> addFile store serv file
+             ".jpeg" -> addFile store serv file
+             ".png"  -> addFile store serv file
              ext     -> return ()
 
 
@@ -125,8 +125,8 @@ readFileBytes store ps =
        Builder.empty
        bs
 
-addFile :: SomeBlobServer -> SomeIndexServer -> Key -> File -> IO ()
-addFile store serv key file = do
+addFile :: SomeBlobServer -> SomeIndexServer -> File -> IO ()
+addFile store serv file = do
   bs <- B.readFile (filePath file)
   refs <- addChunks store bs
   let parts = map (uncurry Part) refs

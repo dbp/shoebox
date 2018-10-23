@@ -15,7 +15,6 @@ import qualified Shoebox.Blob.File       as File
 import           Shoebox.BlobServer
 import           Shoebox.Images
 import           Shoebox.IndexServer
-import           Shoebox.Signing
 import           Shoebox.Types
 
 decoders :: SomeBlobServer

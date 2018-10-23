@@ -81,14 +81,14 @@ indexBlob store serv sha (EmailBlob from headers body) = do
              <> (maybe "" (\x -> "Date: " <> x <> "\n") (getHeader headers "Date"))
   setPreview serv sha preview
 
-recognizeBlob :: SomeBlobServer -> SomeIndexServer -> Key -> File -> (File -> IO ()) -> IO ()
-recognizeBlob store serv key file recognize =
+recognizeBlob :: SomeBlobServer -> SomeIndexServer -> File -> (File -> IO ()) -> IO ()
+recognizeBlob store serv file recognize =
     case map toLower $ takeExtension (T.unpack $ fileName file) of
-      ".mbox" -> emailextract store serv key file
+      ".mbox" -> emailextract store serv file
       ext     -> return ()
 
-emailextract :: SomeBlobServer -> SomeIndexServer -> Key -> File -> IO ()
-emailextract store serv key f = do
+emailextract :: SomeBlobServer -> SomeIndexServer -> File -> IO ()
+emailextract store serv f = do
   bs <- B.readFile (filePath f)
   let messages = parseMBox (TL.decodeUtf8 (BL.fromStrict bs))
   mapM_ (\m -> do log' $ "Adding email '" <> TL.toStrict (fromLine m) <> "'."
