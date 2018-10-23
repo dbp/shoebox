@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Shed.Types where
+module Shoebox.Types where
 
 import           Data.Aeson.Types (FromJSON (..), ToJSON (..), Value (..),
                                    typeMismatch)

@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Shed.IndexServer.Postgresql where
+module Shoebox.IndexServer.Postgresql where
 
 import           Control.Monad
 import           Data.Aeson.Types                     (Value (..))
@@ -13,8 +13,8 @@ import           Database.PostgreSQL.Simple.FromField (FromField (..),
 import           Database.PostgreSQL.Simple.FromRow
 import           Database.PostgreSQL.Simple.ToField
 
-import           Shed.IndexServer
-import           Shed.Types
+import           Shoebox.IndexServer
+import           Shoebox.Types
 
 newtype PostgresIndexer = PG { unPostgresIndexer :: Connection }
 

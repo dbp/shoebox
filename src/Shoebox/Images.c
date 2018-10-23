@@ -5,7 +5,7 @@
 
 #include <libexif/exif-loader.h>
 
-int inline_c_Shed_Images_0_5d3f4b827f0184a20d6069421da4cfe4202cd4e7(char * jpg_inline_c_0, long jpg_inline_c_1, char ** str_inline_c_2, char ** str_inline_c_3, int * size_inline_c_4) {
+int inline_c_Shoebox_Images_0_5d3f4b827f0184a20d6069421da4cfe4202cd4e7(char * jpg_inline_c_0, long jpg_inline_c_1, char ** str_inline_c_2, char ** str_inline_c_3, int * size_inline_c_4) {
 
       ExifLoader *l = exif_loader_new();
       ExifData *ed;

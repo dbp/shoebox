@@ -1,8 +1,8 @@
-name:                shed
+name:                shoebox
 version:             0.1.0.0
 -- synopsis:
 -- description:
-homepage:            https://github.com/dbp/shed#readme
+homepage:            https://github.com/dbp/shoebox#readme
 license:             ISC
 license-file:        LICENSE
 author:              Daniel Patterson
@@ -15,21 +15,21 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Shed.Types
-                     , Shed.BlobServer
-                     , Shed.BlobServer.Directory
-                     , Shed.BlobServer.Memory
-                     , Shed.Indexer
-                     , Shed.Images
-                     , Shed.Signing
-                     , Shed.Importer
-                     , Shed.IndexServer
-                     , Shed.IndexServer.Postgresql
-                     , Shed.IndexServer.Sqlite
-                     , Shed.Blob.Email
-                     , Shed.Blob.File
-                     , Shed.Util
-  c-sources:           src/Shed/Images.c
+  exposed-modules:     Shoebox.Types
+                     , Shoebox.BlobServer
+                     , Shoebox.BlobServer.Directory
+                     , Shoebox.BlobServer.Memory
+                     , Shoebox.Indexer
+                     , Shoebox.Images
+                     , Shoebox.Signing
+                     , Shoebox.Importer
+                     , Shoebox.IndexServer
+                     , Shoebox.IndexServer.Postgresql
+                     , Shoebox.IndexServer.Sqlite
+                     , Shoebox.Blob.Email
+                     , Shoebox.Blob.File
+                     , Shoebox.Util
+  c-sources:           src/Shoebox/Images.c
 
   cc-options:          -Wall -O2
   extra-libraries:     exif
@@ -68,12 +68,12 @@ library
                      , regex 
   default-language:    Haskell2010
 
-executable shed-exe
+executable shoebox-exe
   hs-source-dirs:      app
   main-is:             Main.hs
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
-                     , shed
+                     , shoebox
                      , warp
                      , wai
                      , http-types
@@ -95,15 +95,15 @@ executable shed-exe
                      , hashtables
   default-language:    Haskell2010
 
-test-suite shed-test
+test-suite shoebox-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Spec.hs
   build-depends:       base
-                     , shed
+                     , shoebox
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
 
 source-repository head
   type:     git
-  location: https://github.com/dbp/shed
+  location: https://github.com/dbp/shoebox

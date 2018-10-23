@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes       #-}
-module Shed.Util where
+module Shoebox.Util where
 
 import qualified Data.ByteString.Lazy as BL
 import           Data.Text            (Text)

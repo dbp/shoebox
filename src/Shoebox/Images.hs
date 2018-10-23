@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes       #-}
 {-# LANGUAGE TemplateHaskell   #-}
-module Shed.Images where
+module Shoebox.Images where
 
 import           Codec.Picture          (DynamicImage (ImageRGB8), Image (..),
                                          convertRGB8, decodeImage)

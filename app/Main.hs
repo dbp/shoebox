@@ -43,20 +43,20 @@ import           Text.RE.TDFA.Text
 import           Web.Fn
 import qualified Web.Larceny                 as L
 
-import qualified Shed.Blob.Email             as Email
-import qualified Shed.Blob.File              as File
-import           Shed.BlobServer
-import           Shed.BlobServer.Directory
-import           Shed.BlobServer.Memory
-import           Shed.Images
-import           Shed.Importer
-import           Shed.Indexer
-import           Shed.IndexServer
-import           Shed.IndexServer.Postgresql
-import           Shed.IndexServer.Sqlite
-import           Shed.Signing
-import           Shed.Types
-import           Shed.Util
+import qualified Shoebox.Blob.Email             as Email
+import qualified Shoebox.Blob.File              as File
+import           Shoebox.BlobServer
+import           Shoebox.BlobServer.Directory
+import           Shoebox.BlobServer.Memory
+import           Shoebox.Images
+import           Shoebox.Importer
+import           Shoebox.Indexer
+import           Shoebox.IndexServer
+import           Shoebox.IndexServer.Postgresql
+import           Shoebox.IndexServer.Sqlite
+import           Shoebox.Signing
+import           Shoebox.Types
+import           Shoebox.Util
 
 
 type Fill = L.Fill ()
@@ -113,7 +113,7 @@ initializer = do
   keyblob <- getPubKey keyid
   ref <- writeBlob store keyblob
   let key = Key keyid ref
-  log' $ "Opening the Shed [Blobs " <> pth <> " Index " <> nm <> "]"
+  log' $ "Opening the Shoebox [Blobs " <> pth <> " Index " <> nm <> "]"
   return (Ctxt defaultFnRequest store serv lib key)
 
 main :: IO ()

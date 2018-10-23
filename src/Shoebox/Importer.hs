@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Shed.Importer where
+module Shoebox.Importer where
 
 import           Codec.Archive.Zip
 import           Control.Arrow              ((***))
@@ -26,12 +26,12 @@ import           System.IO                  (hClose)
 import           System.IO.Temp             (withTempFile)
 import           Web.Fn                     (File (..))
 
-import qualified Shed.Blob.Email            as Email
-import qualified Shed.Blob.File             as File
-import           Shed.BlobServer
-import           Shed.Indexer
-import           Shed.IndexServer
-import           Shed.Types
+import qualified Shoebox.Blob.Email            as Email
+import qualified Shoebox.Blob.File             as File
+import           Shoebox.BlobServer
+import           Shoebox.Indexer
+import           Shoebox.IndexServer
+import           Shoebox.Types
 
 isBoringFile :: File -> Bool
 isBoringFile f = "__MACOSX" `T.isPrefixOf` fileName f || ".DS_STORE" == fileName f

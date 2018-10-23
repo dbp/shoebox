@@ -1,10 +1,10 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE OverloadedStrings         #-}
-module Shed.IndexServer where
+module Shoebox.IndexServer where
 
 import           Data.ByteString (ByteString)
 import           Data.Text       (Text)
-import           Shed.Types
+import           Shoebox.Types
 
 class IndexServer a where
   wipe :: a -> IO ()

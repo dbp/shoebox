@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 -- This module contains logic pertaining to type "email"
-module Shed.Blob.Email where
+module Shoebox.Blob.Email where
 
 import           Control.Arrow            ((***))
 import           Control.Logging          (log')
@@ -27,11 +27,11 @@ import           System.FilePath          (takeExtension)
 import           Web.Fn                   (File (..))
 import qualified Web.Larceny              as L
 
-import qualified Shed.Blob.File           as File
-import           Shed.BlobServer
-import           Shed.IndexServer
-import           Shed.Types
-import           Shed.Util
+import qualified Shoebox.Blob.File           as File
+import           Shoebox.BlobServer
+import           Shoebox.IndexServer
+import           Shoebox.Types
+import           Shoebox.Util
 
 data Header = Header Text Text deriving Show
 

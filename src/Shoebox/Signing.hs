@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Shed.Signing where
+module Shoebox.Signing where
 
 import           Data.ByteString    (ByteString)
 import qualified Data.ByteString    as B
@@ -9,7 +9,7 @@ import qualified Data.Text          as T
 import qualified Data.Text.Encoding as T
 import           System.Process
 
-import           Shed.Types
+import           Shoebox.Types
 
 -- | signJson takes a GPG key id, serialized JSON, returns signed json.
 --

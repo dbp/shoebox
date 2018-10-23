@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections     #-}
 -- This module contains logic pertaining to type "file"
-module Shed.Blob.File where
+module Shoebox.Blob.File where
 
 import           Control.Monad
 import           Data.Aeson
@@ -28,11 +28,11 @@ import           System.FilePath          (takeExtension)
 import           Web.Fn                   (File (..))
 import qualified Web.Larceny              as L
 
-import           Shed.BlobServer
-import           Shed.Images
-import           Shed.IndexServer
-import           Shed.Types
-import           Shed.Util
+import           Shoebox.BlobServer
+import           Shoebox.Images
+import           Shoebox.IndexServer
+import           Shoebox.Types
+import           Shoebox.Util
 
 data Part = Part SHA224 Int deriving Show
 

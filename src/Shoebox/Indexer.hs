@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleInstances   #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-module Shed.Indexer where
+module Shoebox.Indexer where
 
 import           Control.Applicative  ((<|>))
 import           Control.Logging      (log')
@@ -10,13 +10,13 @@ import           Data.Aeson           (decode)
 import qualified Data.ByteString.Lazy as BL
 import           Data.Monoid          ((<>))
 
-import qualified Shed.Blob.Email      as Email
-import qualified Shed.Blob.File       as File
-import           Shed.BlobServer
-import           Shed.Images
-import           Shed.IndexServer
-import           Shed.Signing
-import           Shed.Types
+import qualified Shoebox.Blob.Email      as Email
+import qualified Shoebox.Blob.File       as File
+import           Shoebox.BlobServer
+import           Shoebox.Images
+import           Shoebox.IndexServer
+import           Shoebox.Signing
+import           Shoebox.Types
 
 decoders :: SomeBlobServer
          -> SomeIndexServer

@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Shed.BlobServer.Directory where
+module Shoebox.BlobServer.Directory where
 
 import qualified Crypto.Hash        as Hash
 import           Data.ByteString         (ByteString)
@@ -13,8 +13,8 @@ import qualified Data.Text.Encoding      as T
 import           System.Directory        (createDirectoryIfMissing,
                                           doesFileExist, listDirectory)
 
-import           Shed.BlobServer
-import           Shed.Types
+import           Shoebox.BlobServer
+import           Shoebox.Types
 
 data FileStore = FileStore Text
 

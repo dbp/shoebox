@@ -1,6 +1,6 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE OverloadedStrings         #-}
-module Shed.BlobServer where
+module Shoebox.BlobServer where
 
 import qualified Crypto.Hash        as Hash
 import           Data.ByteString         (ByteString)
@@ -12,7 +12,7 @@ import           Data.Monoid
 import qualified Data.Text.Encoding      as T
 import Data.ByteArray (convert)
 
-import           Shed.Types
+import           Shoebox.Types
 
 getBlobName :: ByteString -> IO SHA224
 getBlobName dat = do

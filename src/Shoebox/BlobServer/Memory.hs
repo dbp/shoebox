@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Shed.BlobServer.Memory where
+module Shoebox.BlobServer.Memory where
 
 import qualified Crypto.Hash     as Hash
 import           Data.ByteString      (ByteString)
@@ -7,8 +7,8 @@ import qualified Data.ByteString.Lazy as BL
 import qualified Data.HashTable.IO    as H
 import           Data.Text            (Text)
 
-import           Shed.BlobServer
-import           Shed.Types
+import           Shoebox.BlobServer
+import           Shoebox.Types
 
 type HashTable k v = H.BasicHashTable k v
 

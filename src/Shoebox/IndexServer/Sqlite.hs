@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Shed.IndexServer.Sqlite where
+module Shoebox.IndexServer.Sqlite where
 
 import           Control.Monad
 import           Data.Aeson                       (decode, encode)
@@ -17,8 +17,8 @@ import           Database.SQLite.Simple.FromRow
 import           Database.SQLite.Simple.Ok        (Ok (..))
 import           Database.SQLite.Simple.ToField
 
-import           Shed.IndexServer
-import           Shed.Types
+import           Shoebox.IndexServer
+import           Shoebox.Types
 
 newtype SqliteIndexer = SL { unSqliteIndexer :: Connection }
 
