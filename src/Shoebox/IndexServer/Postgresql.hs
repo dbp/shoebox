@@ -54,9 +54,12 @@ instance IndexServer PostgresIndexer where
   setPreview (PG conn) (SHA224 sha) prev =
     void $ execute conn "UPDATE items SET preview = ? WHERE attributes->'camliContent' = ?" (prev, String sha)
 
+  showInRoot (PG conn) sha =
+    void $ execute conn "UPDATE items SET show_in_root = true where blob_ref = ?" (Only sha)
+
   getItem (PG conn) (SHA224 sha) = listToMaybe <$> query conn "SELECT blob_ref, thumbnail, preview FROM items WHERE blob_ref = ?" (Only sha)
 
-  getItems (PG conn) page = query conn "SELECT blob_ref,  thumbnail, preview FROM items WHERE show_in_ui = true ORDER BY blob_ref DESC LIMIT 100 OFFSET ?" (Only (100 * page))
+  getItems (PG conn) page = query conn "SELECT blob_ref,  thumbnail, preview FROM items WHERE show_in_root = true ORDER BY blob_ref DESC LIMIT 100 OFFSET ?" (Only (100 * page))
 
   search (PG conn) t = query conn "SELECT blob_ref, thumbnail, preview FROM items WHERE (setweight(to_tsvector(items.search_high),'A') || setweight(to_tsvector(items.search_low), 'B')) @@ to_tsquery('english', ?) ORDER BY ts_rank((setweight(to_tsvector(items.search_high),'A') || setweight(to_tsvector(items.search_low), 'B')), to_tsquery('english', ?)) DESC" (t,t)
 

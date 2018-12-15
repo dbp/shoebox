@@ -16,6 +16,8 @@ class IndexServer a where
   setThumbnail :: a -> SHA224 -> ByteString -> IO ()
   setPreview :: a -> SHA224 -> Text -> IO ()
 
+  showInRoot :: a -> SHA224 -> IO ()
+
   getItem :: a -> SHA224 -> IO (Maybe Item)
   getItems :: a -> Int -> IO [Item]
   search :: a -> Text -> IO [Item]
@@ -34,6 +36,7 @@ instance IndexServer SomeIndexServer where
   setSearchLow (SomeIndexServer s) = setSearchLow s
   setThumbnail (SomeIndexServer s) = setThumbnail s
   setPreview (SomeIndexServer s) = setPreview s
+  showInRoot (SomeIndexServer s) = showInRoot s
   getItem (SomeIndexServer s) = getItem s
   getItems (SomeIndexServer s) = getItems s
   search (SomeIndexServer s) = search s

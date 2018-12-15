@@ -3,7 +3,8 @@ blob_ref TEXT PRIMARY KEY,
 thumbnail BLOB,
 preview TEXT,
 search_low TEXT,
-search_high TEXT
+search_high TEXT,
+show_in_root INT
 );
 
 CREATE TABLE redirs (

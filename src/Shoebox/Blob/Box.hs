@@ -1,34 +1,34 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Shoebox.Blob.Box where
 
+import           Control.Monad            (void)
+import qualified Crypto.Hash              as Hash
+import           Crypto.Random            (getRandomBytes)
 import           Data.Aeson
-import Data.Aeson.Encode.Pretty (encodePretty)
-import Data.Aeson.Types
-import Data.Time.Clock
-import Data.Text (Text)
-import Web.Fn
-import Data.ByteString (ByteString)
+import           Data.Aeson.Encode.Pretty (encodePretty)
+import           Data.Aeson.Types
+import           Data.ByteArray           (convert)
+import           Data.ByteString          (ByteString)
+import qualified Data.ByteString.Builder  as Builder
 import qualified Data.ByteString.Lazy     as BL
+import           Data.Maybe               (catMaybes)
+import           Data.Text                (Text)
+import qualified Data.Text.Encoding       as T
+import           Data.Time.Clock
 import           Network.Wai              (Response)
-import qualified Web.Larceny as L
-import Data.Maybe (catMaybes)
-import Control.Monad (void)
-import Crypto.Random (getRandomBytes)
-import qualified Crypto.Hash as Hash
-import qualified Data.Text.Encoding      as T
-import qualified Data.ByteString.Builder as Builder
-import Data.ByteArray (convert)
+import           Web.Fn
+import qualified Web.Larceny              as L
 
-import Shoebox.Items
-import Shoebox.BlobServer
-import qualified Shoebox.Blob.Replace as Replace
-import Shoebox.IndexServer
-import Shoebox.Types
+import qualified Shoebox.Blob.Replace     as Replace
+import           Shoebox.BlobServer
+import           Shoebox.IndexServer
+import           Shoebox.Items
+import           Shoebox.Types
 
-data BoxBlob = BoxBlob { random :: Text
-                       , title :: Text
+data BoxBlob = BoxBlob { random   :: Text
+                       , title    :: Text
                        , contents :: [SHA224]
-                       , preview :: Maybe SHA224
+                       , preview  :: Maybe SHA224
                        }
 
 instance FromJSON BoxBlob where
@@ -54,11 +54,12 @@ indexBlob store serv sha (BoxBlob _ title contents prev) = do
   makeItem serv sha
   setSearchHigh serv sha title
   setPreview serv sha title
+  showInRoot serv sha
   case prev of
     Nothing -> return ()
     Just s -> do mthum <- getThumbnail serv s
                  case mthum of
-                   Nothing -> return ()
+                   Nothing   -> return ()
                    Just thum -> setThumbnail serv sha thum
 
 
@@ -74,7 +75,7 @@ toHtml store serv renderWith (SHA224 sha) bs =
     _ -> return Nothing
 
 updateBox :: SomeBlobServer -> SomeIndexServer -> SHA224 -> BoxBlob -> IO ()
-updateBox store serv oldRef (BoxBlob _ t c p) = do 
+updateBox store serv oldRef (BoxBlob _ t c p) = do
   now <- getCurrentTime
   bytes <- getRandomBytes 32 :: IO ByteString
   let digest = Hash.hash bytes :: Hash.Digest Hash.SHA1
