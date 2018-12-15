@@ -25,3 +25,5 @@ instance BlobServer MemoryStore where
 
  enumerateBlobs (MemoryStore table) f =
    H.mapM_ (\(k,v) -> f (SHA224 k) (BL.fromStrict v)) table
+
+ deleteBlob (MemoryStore table) (SHA224 t) = H.delete table t

@@ -156,7 +156,6 @@ serve store sha = do
       return $ Just $ responseBuilder status200 content builder
     _ -> return Nothing
 
-
 -- NOTE(dbp 2015-11-05): This list taken from snap-core, BSD3 licensed.
 mimeMap :: M.Map String ByteString
 mimeMap =  M.fromList [

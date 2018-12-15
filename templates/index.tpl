@@ -12,6 +12,7 @@
             </div>
           </has-preview>
         </a>
+        <a href="/${contentRef}/delete" onclick="return confirm('Are you sure?');" class="delete">x</a>
       </li>
     </items>
   </ul>

@@ -6,6 +6,7 @@ module Main where
 
 import           Control.Applicative         (liftA2)
 import           Control.Logging             (log', withStderrLogging)
+import Data.Time.Clock
 import           Control.Monad
 import           Data.Aeson
 import           Data.Aeson.Encode.Pretty    (encodePretty)
@@ -54,9 +55,9 @@ import           Shoebox.Indexer
 import           Shoebox.IndexServer
 import           Shoebox.IndexServer.Postgresql
 import           Shoebox.IndexServer.Sqlite
-import           Shoebox.Signing
 import           Shoebox.Types
 import           Shoebox.Util
+import Shoebox.Deletion
 
 
 type Fill = L.Fill ()
@@ -93,6 +94,7 @@ initializer = do
                       ht <- H.new
                       return (SomeBlobServer (MemoryStore ht), ":memory:")
   db' <- fmap T.pack <$> lookupEnv "INDEX"
+  delete store
   (serv, nm) <- case db' of
                   Just db -> do c <- PG.connectPostgreSQL $ T.encodeUtf8 $ "dbname='" <> db <> "'"
                                 return (SomeIndexServer (PG c), db)
@@ -125,17 +127,18 @@ site :: Ctxt -> IO Response
 site ctxt = do
   log' $ T.decodeUtf8 (requestMethod (fst $ _req ctxt)) <> " " <> T.decodeUtf8 (rawPathInfo (fst $ _req ctxt))
   route ctxt [ end // param "page"          ==> indexH
-                       , path "static" ==> staticServe "static"
-                       , segment // path "thumb" ==> thumbH
-                       , segment ==> renderH
-                       , path "blob" // segment ==> blobH
-                       , path "file" // segment ==> \ctxt sha -> File.serve (_store ctxt) sha
-                       , path "raw" // segment ==> rawH
-                       , path "upload" // file "file" !=> uploadH
-                       , path "search" // param "q" ==> searchH
-                       , path "reindex" ==> reindexH
-                       , path "wipe" ==> wipeH
-                       ]
+             , path "static" ==> staticServe "static"
+             , segment // path "thumb" ==> thumbH
+             , segment // path "delete" ==> deleteH
+             , segment ==> renderH
+             , path "blob" // segment ==> blobH
+             , path "file" // segment ==> \ctxt sha -> File.serve (_store ctxt) sha
+             , path "raw" // segment ==> rawH
+             , path "upload" // file "file" !=> uploadH
+             , path "search" // param "q" ==> searchH
+             , path "reindex" ==> reindexH
+             , path "wipe" ==> wipeH
+             ]
     `fallthrough` do r <- render ctxt "404"
                      case r of
                        Just r' -> return r'
@@ -234,6 +237,15 @@ thumbH ctxt sha =
        Nothing -> renderIcon
        Just jpg -> return $ Just $ responseBuilder status200 [(hContentType, "image/jpeg")] (Builder.fromByteString jpg)
 
+deleteH :: Ctxt -> SHA224 -> IO (Maybe Response)
+deleteH ctxt sha =
+  do now <- getCurrentTime
+     shas <- findConnectedBlobs (_store ctxt) sha
+     mapM (\s -> writeBlob (_store ctxt) (BL.toStrict $ encodePretty (DeleteBlob s now))) shas
+     delete (_store ctxt)
+     wipe (_db ctxt)
+     index (_store ctxt) (_db ctxt)
+     redirectReferer ctxt
 
 uploadH :: Ctxt -> File -> IO (Maybe Response)
 uploadH ctxt f = do log' $ "Uploading " <> fileName f <> "..."

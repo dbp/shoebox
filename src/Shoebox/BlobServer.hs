@@ -28,6 +28,7 @@ class BlobServer a where
   writeBlob :: a -> ByteString -> IO SHA224
   readBlob :: a -> SHA224 -> IO (Maybe BL.ByteString)
   enumerateBlobs :: a -> (SHA224 -> BL.ByteString -> IO ()) -> IO ()
+  deleteBlob :: a -> SHA224 -> IO ()
 
 data SomeBlobServer = forall s. BlobServer s => SomeBlobServer s
 
@@ -35,3 +36,4 @@ instance BlobServer SomeBlobServer where
   writeBlob (SomeBlobServer s) = writeBlob s
   readBlob (SomeBlobServer s) = readBlob s
   enumerateBlobs (SomeBlobServer s) = enumerateBlobs s
+  deleteBlob (SomeBlobServer s) = deleteBlob s

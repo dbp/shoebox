@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Shoebox.BlobServer.Directory where
 
+import Data.List (isPrefixOf)
 import qualified Crypto.Hash        as Hash
 import           Data.ByteString         (ByteString)
 import qualified Data.ByteString         as BS
@@ -10,8 +11,10 @@ import           Data.Monoid
 import           Data.Text               (Text)
 import qualified Data.Text               as T
 import qualified Data.Text.Encoding      as T
+import Control.Logging
 import           System.Directory        (createDirectoryIfMissing,
-                                          doesFileExist, listDirectory)
+                                          doesFileExist, listDirectory, removeFile, doesDirectoryExist)
+import Control.Monad (when, filterM)
 
 import           Shoebox.BlobServer
 import           Shoebox.Types
@@ -43,5 +46,12 @@ instance BlobServer FileStore where
     enum pth 3 =
       do dat <- BL.readFile $ T.unpack $ T.intercalate "/" pth
          f (SHA224 $ T.takeWhile (/= '.') (last pth)) dat
-    enum pth n = do fs <- listDirectory $ T.unpack $ T.intercalate "/" pth
-                    mapM_ (\f -> enum (pth <> [T.pack f]) (n+1)) fs
+    enum pth n = do let dir = T.unpack $ T.intercalate "/" pth
+                    fs <- listDirectory dir
+                    let fs' = filter (not . isPrefixOf ".") fs
+                    mapM_ (\f -> enum (pth <> [T.pack f]) (n+1)) fs'
+
+ deleteBlob (FileStore dir) (SHA224 t) =
+   do let filename = getDir dir t <> T.unpack t <> ".dat"
+      ex <- doesFileExist filename
+      when ex (removeFile filename)

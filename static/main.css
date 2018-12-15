@@ -60,6 +60,20 @@ li img {
     max-height: 128px;
 }
 
+li a.delete {
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    text-decoration: none;
+    display: block;
+    background-color: red;
+    padding: 3px;
+    padding-left: 5px;
+    padding-right: 5px;
+    color: white;
+    border-radius: 3px;
+}
+
 .dropzone {
     /* positions to point 0,0 - required for z-index */
     position: fixed; top: 0; left: 0;
