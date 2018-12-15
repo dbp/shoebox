@@ -50,6 +50,9 @@ instance IndexServer SqliteIndexer where
   makeItem (SL conn) sha =
     void $ execute conn "INSERT OR IGNORE INTO items (blob_ref) VALUES (?)" (Only sha)
 
+  removeItem (SL conn) sha =
+    void $ execute conn "DELETE FROM items where blob_ref = ?" (Only sha)
+
   setSearchHigh (SL conn) (SHA224 sha) text =
     void $ execute conn "UPDATE items SET search_high = ? WHERE blob_ref = ?" (text, sha)
 

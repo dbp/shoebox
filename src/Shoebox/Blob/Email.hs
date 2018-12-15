@@ -81,8 +81,8 @@ indexBlob store serv sha (EmailBlob from headers body) = do
              <> (maybe "" (\x -> "Date: " <> x <> "\n") (getHeader headers "Date"))
   setPreview serv sha preview
 
-recognizeBlob :: SomeBlobServer -> SomeIndexServer -> File -> (File -> IO ()) -> IO ()
-recognizeBlob store serv file recognize =
+recognizeBlob :: SomeBlobServer -> SomeIndexServer -> Maybe SHA224 -> File -> (File -> IO ()) -> IO ()
+recognizeBlob store serv box file recognize =
     case map toLower $ takeExtension (T.unpack $ fileName file) of
       ".mbox" -> emailextract store serv file
       ext     -> return ()

@@ -10,6 +10,7 @@ class IndexServer a where
   wipe :: a -> IO ()
 
   makeItem :: a -> SHA224 -> IO ()
+  removeItem :: a -> SHA224 -> IO ()
   setSearchHigh :: a -> SHA224 -> Text -> IO ()
   setSearchLow :: a -> SHA224 -> Text -> IO ()
   setThumbnail :: a -> SHA224 -> ByteString -> IO ()
@@ -28,6 +29,7 @@ data SomeIndexServer = forall s. IndexServer s => SomeIndexServer s
 instance IndexServer SomeIndexServer where
   wipe (SomeIndexServer s) = wipe s
   makeItem (SomeIndexServer s) = makeItem s
+  removeItem (SomeIndexServer s) = removeItem s
   setSearchHigh (SomeIndexServer s) = setSearchHigh s
   setSearchLow (SomeIndexServer s) = setSearchLow s
   setThumbnail (SomeIndexServer s) = setThumbnail s

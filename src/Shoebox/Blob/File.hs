@@ -3,6 +3,7 @@
 -- This module contains logic pertaining to type "file"
 module Shoebox.Blob.File where
 
+import Data.Time.Clock (getCurrentTime)
 import           Control.Monad
 import           Data.Aeson
 import           Data.Aeson.Encode.Pretty (encodePretty)
@@ -33,6 +34,10 @@ import           Shoebox.Images
 import           Shoebox.IndexServer
 import           Shoebox.Types
 import           Shoebox.Util
+import  Shoebox.Blob.Box (BoxBlob(..))
+import qualified Shoebox.Blob.Box as Box
+import Shoebox.Blob.Replace (ReplaceBlob(..))
+import qualified Shoebox.Blob.Replace as Replace
 
 data Part = Part SHA224 Int deriving Show
 
@@ -91,15 +96,15 @@ indexBlob store serv sha (FileBlob name parts) = do
            _            -> return ()
     Just jpg -> setThumbnail serv sha jpg
 
-recognizeBlob :: SomeBlobServer -> SomeIndexServer -> File -> (File -> IO ()) -> IO ()
-recognizeBlob store serv file recognize =
+recognizeBlob :: SomeBlobServer -> SomeIndexServer -> Maybe SHA224 -> File -> (File -> IO ()) -> IO ()
+recognizeBlob store serv box file recognize =
   case fileContentType file of
-    "image/jpeg" -> addFile store serv file
-    "image/png" -> addFile store serv file
+    "image/jpeg" -> addFile store serv box file
+    "image/png" -> addFile store serv box file
     typ -> case map toLower $ takeExtension (T.unpack $ fileName file) of
-             ".jpg"  -> addFile store serv file
-             ".jpeg" -> addFile store serv file
-             ".png"  -> addFile store serv file
+             ".jpg"  -> addFile store serv box file
+             ".jpeg" -> addFile store serv box file
+             ".png"  -> addFile store serv box file
              ext     -> return ()
 
 
@@ -125,8 +130,8 @@ readFileBytes store ps =
        Builder.empty
        bs
 
-addFile :: SomeBlobServer -> SomeIndexServer -> File -> IO ()
-addFile store serv file = do
+addFile :: SomeBlobServer -> SomeIndexServer -> Maybe SHA224 -> File -> IO ()
+addFile store serv box file = do
   bs <- B.readFile (filePath file)
   refs <- addChunks store bs
   let parts = map (uncurry Part) refs
@@ -135,6 +140,15 @@ addFile store serv file = do
   exists <- statBlob store fileblob'
   if exists then return () else do
     (SHA224 fref) <- writeBlob store fileblob'
+    case box of
+      Nothing -> return ()
+      Just boxRef -> do
+        mb <- readBlob store boxRef
+        case decode =<< mb of
+          Nothing -> return ()
+          Just (BoxBlob r t c pr) -> do
+            let newbox = BoxBlob r t (c ++ [SHA224 fref]) pr
+            Box.updateBox store serv boxRef newbox
     indexBlob store serv (SHA224 fref) fileblob
 
 toHtml :: SomeBlobServer -> SomeIndexServer -> (L.Substitutions () -> Text -> IO (Maybe Response)) -> SHA224 -> BL.ByteString -> IO (Maybe Response)

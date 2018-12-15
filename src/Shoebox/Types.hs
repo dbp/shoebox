@@ -8,7 +8,7 @@ import qualified Data.Map         as M
 import           Data.Text        (Text)
 import qualified Data.Text        as T
 
-newtype SHA224 = SHA224 { unSHA224 :: Text }
+newtype SHA224 = SHA224 { unSHA224 :: Text } deriving Eq
 instance Show SHA224 where
   show (SHA224 s) = T.unpack s
 

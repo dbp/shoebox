@@ -29,6 +29,8 @@ library
                      , Shoebox.Blob.File
                      , Shoebox.Blob.Delete
                      , Shoebox.Blob.Replace
+                     , Shoebox.Blob.Box
+                     , Shoebox.Items
                      , Shoebox.Util
                      , Shoebox.Deletion
   c-sources:           src/Shoebox/Images.c

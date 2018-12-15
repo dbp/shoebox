@@ -39,6 +39,9 @@ instance IndexServer PostgresIndexer where
   makeItem (PG conn) sha =
     void $ execute conn "INSERT INTO items (blob_ref) VALUES (?) ON CONFLICT DO NOTHING" (Only sha)
 
+  removeItem (PG conn) sha =
+    void $ execute conn "DELETE FROM items where blob_ref = ?" (Only sha)
+
   setSearchHigh (PG conn) (SHA224 sha) text =
     void $ execute conn "UPDATE items SET search_high = ? WHERE attributes->'camliContent' = ?" (text, String sha)
 

@@ -44,8 +44,10 @@ import           Text.RE.TDFA.Text
 import           Web.Fn
 import qualified Web.Larceny                 as L
 
+import Shoebox.Items
 import qualified Shoebox.Blob.Email             as Email
 import qualified Shoebox.Blob.File              as File
+import qualified Shoebox.Blob.Box              as Box
 import           Shoebox.BlobServer
 import           Shoebox.BlobServer.Directory
 import           Shoebox.BlobServer.Memory
@@ -100,7 +102,7 @@ initializer = do
                   Just db -> do c <- PG.connectPostgreSQL $ T.encodeUtf8 $ "dbname='" <> db <> "'"
                                 return (SomeIndexServer (PG c), db)
                   Nothing -> do sql <- readFile "migrations/sqlite.sql"
-                                c <- SQLITE.open ":memory:"
+                                c <- SQLITE.open ":memory:" --"tmp.db" 
                                 let stmts = map T.unpack $ T.splitOn "\n\n" (T.pack sql)
                                 mapM_ (\stmt -> SQLITE.execute_ c (fromString stmt)) stmts
                                 let serv = SomeIndexServer (SL c)
@@ -132,12 +134,13 @@ site ctxt = do
              , path "static" ==> staticServe "static"
              , segment // path "thumb" ==> thumbH
              , segment // path "delete" ==> deleteH
+             , segment // path "remove" // segment ==> boxDeleteH
              , segment ==> renderH
              , segment ==> redirectH
              , path "blob" // segment ==> blobH
              , path "file" // segment ==> \ctxt sha -> File.serve (_store ctxt) sha
              , path "raw" // segment ==> rawH
-             , path "upload" // file "file" !=> uploadH
+             , path "upload" // param "box" // file "file" !=> uploadH
              , path "search" // param "q" ==> searchH
              , path "reindex" ==> reindexH
              , path "wipe" ==> wipeH
@@ -146,17 +149,6 @@ site ctxt = do
                      case r of
                        Just r' -> return r'
                        Nothing -> notFoundText "Page not found"
-
-itemSubs :: Item -> Substitutions
-itemSubs (Item (SHA224 sha) thumb prev) =
-  L.subs [("contentRef", L.textFill sha)
-         ,("has-thumbnail", justFill thumb)
-         ,("no-thumbnail", nothingFill thumb)
-         ,("has-preview", justFill prev)
-         ,("preview", L.rawTextFill $ maybe "" (T.replace "\n" "</p><p>" . HE.text) prev)]
-  where
-    justFill m = if isJust m then L.fillChildren else L.textFill ""
-    nothingFill m = if isJust m then L.textFill "" else L.fillChildren
 
 indexH :: Ctxt -> Maybe Int -> IO (Maybe Response)
 indexH ctxt page = do
@@ -181,6 +173,7 @@ searchH ctxt q = do
 
 reindexH :: Ctxt -> IO (Maybe Response)
 reindexH ctxt = do
+  delete (_store ctxt)
   index (_store ctxt) (_db ctxt)
   okText "OK."
 
@@ -200,7 +193,8 @@ renderH ctxt sha = do
     Just bs ->
       liftA2 mplus
       (mmsum $ map (\f -> f (_store ctxt) (_db ctxt) (renderWith ctxt) sha bs)
-        [File.toHtml
+        [Box.toHtml
+        ,File.toHtml
         ,Email.toHtml
         ])
       (blobH ctxt sha)
@@ -250,10 +244,27 @@ deleteH ctxt sha =
      index (_store ctxt) (_db ctxt)
      redirectReferer ctxt
 
-uploadH :: Ctxt -> File -> IO (Maybe Response)
-uploadH ctxt f = do log' $ "Uploading " <> fileName f <> "..."
-                    process (_store ctxt) (_db ctxt)  f
-                    okText "OK"
+boxDeleteH :: Ctxt -> SHA224 -> SHA224 -> IO (Maybe Response)
+boxDeleteH ctxt boxSha eltSha =
+  do b <- readBlob (_store ctxt) boxSha
+     case decode =<< b of
+       Nothing -> return Nothing
+       Just (Box.BoxBlob r t contents p) ->
+         if eltSha `elem` contents
+         then do let newbox = Box.BoxBlob r t (filter (/= eltSha) contents) p
+                 Box.updateBox (_store ctxt) (_db ctxt) boxSha newbox
+                 redirectReferer ctxt
+         else redirectReferer ctxt
+
+uploadH :: Ctxt -> Maybe SHA224 -> File -> IO (Maybe Response)
+uploadH ctxt boxRef f = do
+  case boxRef of
+    Nothing ->
+      log' $ "Uploading " <> fileName f <> "..."
+    Just (SHA224 box) ->
+      log' $ "Uploading " <> fileName f <> " to box " <> box <> "..."
+  process (_store ctxt) (_db ctxt) boxRef f
+  okText "OK"
 
 redirectH :: Ctxt -> SHA224 -> IO (Maybe Response)
 redirectH ctxt sha = do red <- getRedirections (_db ctxt) sha

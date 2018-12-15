@@ -101,6 +101,9 @@ window.addEventListener("drop", function(e) {
         if (typeof f !== "undefined") {
             var data = new FormData();
             data.append('file', f, f.name);
+            if (typeof window.box_ref !== "undefined") {
+                data.append("box", window.box_ref);
+            }
             var request = new XMLHttpRequest();
             request.open('POST', '/upload', true);
             request.onreadystatechange = function() { // ASYNC
