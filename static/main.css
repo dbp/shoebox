@@ -151,6 +151,20 @@ li .new button {
     animation: spinner 1.5s linear infinite;
 }
 
+.home {
+    position: absolute;
+    top: 15px;
+    left: 20px;
+    width: 100px;
+    height: 64px;
+    background-image: url("/static/logo.png");
+    background-size: contain;
+    background-position: left;
+    background-repeat: no-repeat;
+    display: block;
+    z-index: 100;
+}
+
 form {
     padding: 20px 20%;
     text-align: center;
@@ -223,4 +237,11 @@ pre.blob {
     background-color: #efefef;
     box-shadow: inset 0 0 5px #ccc;
     overflow: scroll;
+}
+
+.footer {
+    font-size: 0.8em;
+    color: #ccc;
+    text-align: center;
+    padding-top; 10px;
 }
