@@ -11,32 +11,21 @@ import Data.Time.Clock
 import Shoebox.Blob.File
 import           Shoebox.Types
 import Shoebox.BlobServer
-
-data DeleteBlob = DeleteBlob { blobRef :: SHA224
-                             , timestamp :: UTCTime
-                             }
-
-instance FromJSON DeleteBlob where
-  parseJSON (Object v) = (do t <- v .: "type"
-                             if t == ("delete" :: Text) then
-                               DeleteBlob <$> v .: "blobRef"
-                                          <*> v .: "timestamp"
-                               else fail "Not a delete")
-  parseJSON invalid    = typeMismatch "DeleteBlob" invalid
-
-instance ToJSON DeleteBlob where
-  toJSON (DeleteBlob ref time) = object ["version" .= (1 :: Int)
-                                        ,"type" .= ("delete" :: Text)
-                                        ,"blobRef" .= ref
-                                        ,"timestamp" .= time]
+import Shoebox.Blob.Delete
+import Shoebox.Blob.Replace
 
 
 delete :: SomeBlobServer -> IO ()
 delete store = enumerateBlobs store $
-  \sha content -> case decode content of
-                    Nothing -> return ()
-                    Just (DeleteBlob target _) ->
-                      deleteBlob store target
+  \sha content ->
+    do case decode content of
+         Nothing -> return ()
+         Just (DeleteBlob target _) ->
+           deleteBlob store target
+       case decode content of
+         Nothing -> return ()
+         Just (ReplaceBlob old _ _) ->
+           deleteBlob store old
 
 -- NOTE(dbp 2018-12-15): When you want to delete a single blob,
 -- sometimes others are logically connected. i.e., a file blob

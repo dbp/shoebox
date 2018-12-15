@@ -58,6 +58,7 @@ import           Shoebox.IndexServer.Sqlite
 import           Shoebox.Types
 import           Shoebox.Util
 import Shoebox.Deletion
+import Shoebox.Blob.Delete
 
 
 type Fill = L.Fill ()
@@ -100,7 +101,8 @@ initializer = do
                                 return (SomeIndexServer (PG c), db)
                   Nothing -> do sql <- readFile "migrations/sqlite.sql"
                                 c <- SQLITE.open ":memory:"
-                                SQLITE.execute_ c (fromString sql)
+                                let stmts = map T.unpack $ T.splitOn "\n\n" (T.pack sql)
+                                mapM_ (\stmt -> SQLITE.execute_ c (fromString stmt)) stmts
                                 let serv = SomeIndexServer (SL c)
                                 log' "Running indexer to populate :memory: index."
                                 -- NOTE(dbp 2017-05-29): Run many times because
@@ -138,6 +140,7 @@ site ctxt = do
              , path "search" // param "q" ==> searchH
              , path "reindex" ==> reindexH
              , path "wipe" ==> wipeH
+             , anything ==> redirectH
              ]
     `fallthrough` do r <- render ctxt "404"
                      case r of
@@ -251,3 +254,9 @@ uploadH :: Ctxt -> File -> IO (Maybe Response)
 uploadH ctxt f = do log' $ "Uploading " <> fileName f <> "..."
                     process (_store ctxt) (_db ctxt)  f
                     okText "OK"
+
+redirectH :: Ctxt -> IO (Maybe Response)
+redirectH ctxt = do red <- getRedirection (_db ctxt) (T.decodeUtf8 $ rawPathInfo (fst $ _req ctxt))
+                    case red of
+                      Just target -> redirect target
+                      Nothing -> return Nothing

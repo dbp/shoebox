@@ -12,6 +12,7 @@ import           Data.Monoid          ((<>))
 
 import qualified Shoebox.Blob.Email      as Email
 import qualified Shoebox.Blob.File       as File
+import qualified Shoebox.Blob.Replace       as Replace
 import           Shoebox.BlobServer
 import           Shoebox.Images
 import           Shoebox.IndexServer
@@ -25,6 +26,7 @@ decoders :: SomeBlobServer
 decoders st se sha d =
   [File.indexBlob st se sha <$> decode d
   ,Email.indexBlob st se sha <$> decode d
+  ,Replace.indexBlob st se sha <$> decode d
   ]
 
 index :: SomeBlobServer -> SomeIndexServer -> IO ()

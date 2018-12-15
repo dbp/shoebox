@@ -62,3 +62,5 @@ instance IndexServer PostgresIndexer where
        case res of
          Nothing                  -> return Nothing
          Just (Only (Binary jpg)) -> return (Just jpg)
+  getRedirection (PG conn) from = error "Not implemented"
+  setRedirection (PG conn) from to = error "Not implemented"

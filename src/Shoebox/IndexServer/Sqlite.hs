@@ -73,3 +73,11 @@ instance IndexServer SqliteIndexer where
        case res of
          Nothing         -> return Nothing
          Just (Only jpg) -> return (Just jpg)
+
+  getRedirection (SL conn) from =
+    do res <- listToMaybe <$> query conn "SELECT target FROM redirs WHERE src = ?" (Only from)
+       case res of
+         Nothing -> return Nothing
+         Just (Only txt) -> return (Just txt)
+  setRedirection (SL conn) from to =
+    void $ execute conn "INSERT OR IGNORE INTO redirs (src,target) VALUES (?,?)" (from, to)

@@ -5,3 +5,8 @@ preview TEXT,
 search_low TEXT,
 search_high TEXT
 );
+
+CREATE TABLE redirs (
+  src TEXT PRIMARY KEY,
+  target TEXT
+);

@@ -27,6 +27,8 @@ library
                      , Shoebox.IndexServer.Sqlite
                      , Shoebox.Blob.Email
                      , Shoebox.Blob.File
+                     , Shoebox.Blob.Delete
+                     , Shoebox.Blob.Replace
                      , Shoebox.Util
                      , Shoebox.Deletion
   c-sources:           src/Shoebox/Images.c
