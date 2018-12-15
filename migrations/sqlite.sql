@@ -7,6 +7,7 @@ search_high TEXT
 );
 
 CREATE TABLE redirs (
-  src TEXT PRIMARY KEY,
+  id INTEGER PRIMARY KEY,
+  src TEXT,
   target TEXT
 );

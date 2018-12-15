@@ -20,8 +20,8 @@ class IndexServer a where
   search :: a -> Text -> IO [Item]
   getThumbnail :: a -> SHA224 -> IO (Maybe ByteString)
 
-  getRedirection :: a -> Text -> IO (Maybe Text)
-  setRedirection :: a -> Text -> Text -> IO ()
+  getRedirections :: a -> SHA224 -> IO [SHA224]
+  setRedirection :: a -> SHA224 -> SHA224 -> IO ()
 
 data SomeIndexServer = forall s. IndexServer s => SomeIndexServer s
 
@@ -36,5 +36,5 @@ instance IndexServer SomeIndexServer where
   getItems (SomeIndexServer s) = getItems s
   search (SomeIndexServer s) = search s
   getThumbnail (SomeIndexServer s) = getThumbnail s
-  getRedirection (SomeIndexServer s) = getRedirection s
+  getRedirections (SomeIndexServer s) = getRedirections s
   setRedirection (SomeIndexServer s) = setRedirection s

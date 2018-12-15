@@ -74,10 +74,17 @@ instance IndexServer SqliteIndexer where
          Nothing         -> return Nothing
          Just (Only jpg) -> return (Just jpg)
 
-  getRedirection (SL conn) from =
-    do res <- listToMaybe <$> query conn "SELECT target FROM redirs WHERE src = ?" (Only from)
-       case res of
-         Nothing -> return Nothing
-         Just (Only txt) -> return (Just txt)
-  setRedirection (SL conn) from to =
-    void $ execute conn "INSERT OR IGNORE INTO redirs (src,target) VALUES (?,?)" (from, to)
+  getRedirections (SL conn) from =
+    fmap (map head) $ query conn "SELECT target FROM redirs WHERE src = ?" (Only from)
+
+  setRedirection (SL conn) (SHA224 from) (SHA224 to) = do
+    targets <- getRedirections (SL conn) (SHA224 to)
+    case targets of
+      [] -> do
+        void $ execute conn "INSERT INTO redirs (src,target) SELECT ?,? WHERE NOT EXISTS (SELECT 1 FROM redirs WHERE src = ? AND target = ?);" (from, to, from, to)
+        -- NOTE(dbp 2018-12-15): If we insert B -> C, any A -> B should be updated to A -> C.
+        void $ execute conn "UPDATE redirs SET target = ? WHERE target = ?;" (to, from)
+      ts -> do
+        -- NOTE(dbp 2018-12-15): This means that we wanted A -> B, but B -> C1,C2,... already, so do A -> C1, A -> C2...
+        mapM_ (\t -> do execute conn "INSERT INTO redirs (src,target) SELECT ?,? WHERE NOT EXISTS (SELECT 1 FROM redirs WHERE src = ? AND target = ?);" (from, t, from, t)
+                        execute conn "UPDATE redirs SET target = ? WHERE target = ?;" (t, from)) ts

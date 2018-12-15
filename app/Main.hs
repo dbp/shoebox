@@ -133,6 +133,7 @@ site ctxt = do
              , segment // path "thumb" ==> thumbH
              , segment // path "delete" ==> deleteH
              , segment ==> renderH
+             , segment ==> redirectH
              , path "blob" // segment ==> blobH
              , path "file" // segment ==> \ctxt sha -> File.serve (_store ctxt) sha
              , path "raw" // segment ==> rawH
@@ -140,7 +141,6 @@ site ctxt = do
              , path "search" // param "q" ==> searchH
              , path "reindex" ==> reindexH
              , path "wipe" ==> wipeH
-             , anything ==> redirectH
              ]
     `fallthrough` do r <- render ctxt "404"
                      case r of
@@ -255,8 +255,14 @@ uploadH ctxt f = do log' $ "Uploading " <> fileName f <> "..."
                     process (_store ctxt) (_db ctxt)  f
                     okText "OK"
 
-redirectH :: Ctxt -> IO (Maybe Response)
-redirectH ctxt = do red <- getRedirection (_db ctxt) (T.decodeUtf8 $ rawPathInfo (fst $ _req ctxt))
-                    case red of
-                      Just target -> redirect target
-                      Nothing -> return Nothing
+redirectH :: Ctxt -> SHA224 -> IO (Maybe Response)
+redirectH ctxt sha = do red <- getRedirections (_db ctxt) sha
+                        is <- fmap catMaybes $ mapM (getItem (_db ctxt)) red
+                        case is of
+                          [(Item (SHA224 target) _ _)] -> redirect ("/" <> target)
+                          [] -> return Nothing
+                          is -> do
+                            renderWith ctxt (L.subs [("has-more", L.textFill "")
+                                                    ,("q", L.textFill "")
+                                                    ,("items", L.mapSubs itemSubs is)])
+                                       "index"

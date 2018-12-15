@@ -34,4 +34,4 @@ instance ToJSON ReplaceBlob where
 
 indexBlob :: SomeBlobServer -> SomeIndexServer -> SHA224 -> ReplaceBlob -> IO ()
 indexBlob store serv sha (ReplaceBlob old new _) = do
-  setRedirection serv ("/" <> unSHA224 old) ("/" <> unSHA224 new)
+  setRedirection serv old new
