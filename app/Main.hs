@@ -257,9 +257,10 @@ boxDeleteH ctxt boxSha eltSha =
   do b <- readBlob (_store ctxt) boxSha
      case decode =<< b of
        Nothing -> return Nothing
-       Just (Box.BoxBlob r t contents p) ->
+       Just (Box.BoxBlob r t contents p') ->
          if eltSha `elem` contents
-         then do let newbox = Box.BoxBlob r t (filter (/= eltSha) contents) p
+         then do let p = if p' == Just eltSha then Nothing else p'
+                 let newbox = Box.BoxBlob r t (filter (/= eltSha) contents) p
                  Box.updateBox (_store ctxt) (_db ctxt) boxSha newbox
                  redirectReferer ctxt
          else redirectReferer ctxt
