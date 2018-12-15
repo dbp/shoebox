@@ -14,7 +14,7 @@ import           Data.ByteString          (ByteString)
 import qualified Data.ByteString          as B
 import qualified Data.ByteString.Lazy     as BL
 import           Data.Char                (toLower)
-import           Data.Maybe               (fromMaybe, listToMaybe)
+import           Data.Maybe               (fromMaybe, isJust, listToMaybe)
 import           Data.MBox                (body, fromLine, headers, parseMBox)
 import           Data.Monoid              ((<>))
 import           Data.Text                (Text)
@@ -27,7 +27,7 @@ import           System.FilePath          (takeExtension)
 import           Web.Fn                   (File (..))
 import qualified Web.Larceny              as L
 
-import qualified Shoebox.Blob.File           as File
+import qualified Shoebox.Blob.File        as File
 import           Shoebox.BlobServer
 import           Shoebox.IndexServer
 import           Shoebox.Types
@@ -98,7 +98,7 @@ emailextract store serv f = do
                                        (map (uncurry File.Part) brefs)
                   let emailblob = BL.toStrict $ encodePretty email
                   exists <- statBlob store emailblob
-                  if exists then return () else do
+                  if isJust exists then return () else do
                     (SHA224 eref) <- writeBlob store emailblob
                     indexBlob store serv (SHA224 eref) email
         ) messages

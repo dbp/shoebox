@@ -3,7 +3,6 @@
 -- This module contains logic pertaining to type "file"
 module Shoebox.Blob.File where
 
-import Data.Time.Clock (getCurrentTime)
 import           Control.Monad
 import           Data.Aeson
 import           Data.Aeson.Encode.Pretty (encodePretty)
@@ -20,6 +19,7 @@ import           Data.Maybe               (catMaybes)
 import           Data.Text                (Text)
 import qualified Data.Text                as T
 import qualified Data.Text.Encoding       as T
+import           Data.Time.Clock          (getCurrentTime)
 import           Magic                    (MagicFlag (MagicMimeType),
                                            magicCString, magicLoadDefault,
                                            magicOpen)
@@ -29,15 +29,15 @@ import           System.FilePath          (takeExtension)
 import           Web.Fn                   (File (..))
 import qualified Web.Larceny              as L
 
+import           Shoebox.Blob.Box         (BoxBlob (..))
+import qualified Shoebox.Blob.Box         as Box
+import           Shoebox.Blob.Replace     (ReplaceBlob (..))
+import qualified Shoebox.Blob.Replace     as Replace
 import           Shoebox.BlobServer
 import           Shoebox.Images
 import           Shoebox.IndexServer
 import           Shoebox.Types
 import           Shoebox.Util
-import  Shoebox.Blob.Box (BoxBlob(..))
-import qualified Shoebox.Blob.Box as Box
-import Shoebox.Blob.Replace (ReplaceBlob(..))
-import qualified Shoebox.Blob.Replace as Replace
 
 data Part = Part SHA224 Int deriving Show
 
@@ -138,18 +138,22 @@ addFile store serv box file = do
   let fileblob = FileBlob (fileName file) parts
   let fileblob' = BL.toStrict $ encodePretty fileblob
   exists <- statBlob store fileblob'
-  if exists then return () else do
-    (SHA224 fref) <- writeBlob store fileblob'
-    case box of
-      Nothing -> return ()
-      Just boxRef -> do
-        mb <- readBlob store boxRef
-        case decode =<< mb of
-          Nothing -> return ()
-          Just (BoxBlob r t c pr) -> do
-            let newbox = BoxBlob r t (c ++ [SHA224 fref]) pr
-            Box.updateBox store serv boxRef newbox
-    indexBlob store serv (SHA224 fref) fileblob
+  fref <- case exists of
+            Just fref -> return fref
+            Nothing -> do
+              fref <- writeBlob store fileblob'
+              indexBlob store serv fref fileblob
+              return fref
+  case box of
+    Nothing -> return ()
+    Just boxRef -> do
+      mb <- readBlob store boxRef
+      case decode =<< mb of
+        Nothing -> return ()
+        Just (BoxBlob r t c pr) -> do
+          let newbox = BoxBlob r t (c ++ [fref]) pr
+          Box.updateBox store serv boxRef newbox
+
 
 toHtml :: SomeBlobServer -> SomeIndexServer -> (L.Substitutions () -> Text -> IO (Maybe Response)) -> SHA224 -> BL.ByteString -> IO (Maybe Response)
 toHtml store serv renderWith (SHA224 sha) bs =
