@@ -15,7 +15,7 @@ import qualified Data.ByteString.Lazy     as BL
 import           Data.ByteString.Unsafe   (unsafeUseAsCStringLen)
 import           Data.Char                (toLower)
 import qualified Data.Map                 as M
-import           Data.Maybe               (catMaybes)
+import           Data.Maybe               (catMaybes, isNothing)
 import           Data.Text                (Text)
 import qualified Data.Text                as T
 import qualified Data.Text.Encoding       as T
@@ -150,7 +150,8 @@ addFile store serv box file = do
       mb <- readBlob store boxRef
       case decode =<< mb of
         Nothing -> return ()
-        Just (BoxBlob r t c pr) -> do
+        Just (BoxBlob r t c pr') -> do
+          let pr = if isNothing pr' then Just fref else pr'
           let newbox = BoxBlob r t (c ++ [fref]) pr
           Box.updateBox store serv boxRef newbox
 

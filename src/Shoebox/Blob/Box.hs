@@ -49,6 +49,12 @@ instance ToJSON BoxBlob where
                                     ,"contents" .= c
                                     ,"preview" .= p]
 
+mkRandom :: IO Text
+mkRandom = do bytes <- getRandomBytes 32 :: IO ByteString
+              let digest = Hash.hash bytes :: Hash.Digest Hash.SHA1
+              return $ T.decodeUtf8 $ BL.toStrict $ Builder.toLazyByteString $ Builder.byteStringHex (convert digest)
+
+
 indexBlob :: SomeBlobServer -> SomeIndexServer -> SHA224 -> BoxBlob -> IO ()
 indexBlob store serv sha (BoxBlob _ title contents prev) = do
   makeItem serv sha
@@ -77,10 +83,7 @@ toHtml store serv renderWith (SHA224 sha) bs =
 updateBox :: SomeBlobServer -> SomeIndexServer -> SHA224 -> BoxBlob -> IO ()
 updateBox store serv oldRef (BoxBlob _ t c p) = do
   now <- getCurrentTime
-  bytes <- getRandomBytes 32 :: IO ByteString
-  let digest = Hash.hash bytes :: Hash.Digest Hash.SHA1
-  let rand = T.decodeUtf8 $ BL.toStrict $ Builder.toLazyByteString $ Builder.byteStringHex (convert digest)
-
+  rand <- mkRandom
   let withrand = BoxBlob rand t c p
   newRef <- writeBlob store (BL.toStrict $ encodePretty withrand)
   indexBlob store serv newRef withrand

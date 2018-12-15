@@ -4,63 +4,63 @@
 {-# LANGUAGE TupleSections     #-}
 module Main where
 
-import           Control.Applicative         (liftA2)
-import           Control.Logging             (log', withStderrLogging)
-import Data.Time.Clock
+import           Control.Applicative            (liftA2)
+import           Control.Logging                (log', withStderrLogging)
 import           Control.Monad
 import           Data.Aeson
-import           Data.Aeson.Encode.Pretty    (encodePretty)
-import           Data.Binary.Builder         (Builder)
-import qualified Data.Binary.Builder         as Builder
-import           Data.ByteString             (ByteString)
-import qualified Data.ByteString.Lazy        as BL
-import           Data.ByteString.Unsafe      (unsafeUseAsCStringLen)
-import qualified Data.HashTable.IO           as H
-import           Data.Map                    (Map)
-import qualified Data.Map                    as M
-import           Data.Maybe                  (catMaybes, fromMaybe, isJust,
-                                              listToMaybe)
-import           Data.Monoid                 ((<>))
-import           Data.String                 (fromString)
-import           Data.Text                   (Text)
-import qualified Data.Text                   as T
-import qualified Data.Text.Encoding          as T
-import qualified Database.PostgreSQL.Simple  as PG
-import qualified Database.SQLite.Simple      as SQLITE
-import qualified HTMLEntities.Text           as HE
-import           Magic                       (MagicFlag (MagicMimeType),
-                                              magicCString, magicLoadDefault,
-                                              magicOpen)
-import           Network.HTTP.Types          (hContentType)
-import           Network.HTTP.Types.Status   (status200)
-import           Network.Wai                 (Response, rawPathInfo,
-                                              requestMethod, responseBuilder,
-                                              responseLBS)
-import           Network.Wai.Handler.Warp    (runEnv)
-import           System.Environment          (lookupEnv)
-import           System.FilePath             (takeExtension)
+import           Data.Aeson.Encode.Pretty       (encodePretty)
+import           Data.Binary.Builder            (Builder)
+import qualified Data.Binary.Builder            as Builder
+import           Data.ByteString                (ByteString)
+import qualified Data.ByteString.Lazy           as BL
+import           Data.ByteString.Unsafe         (unsafeUseAsCStringLen)
+import qualified Data.HashTable.IO              as H
+import           Data.Map                       (Map)
+import qualified Data.Map                       as M
+import           Data.Maybe                     (catMaybes, fromMaybe, isJust,
+                                                 listToMaybe)
+import           Data.Monoid                    ((<>))
+import           Data.String                    (fromString)
+import           Data.Text                      (Text)
+import qualified Data.Text                      as T
+import qualified Data.Text.Encoding             as T
+import           Data.Time.Clock
+import qualified Database.PostgreSQL.Simple     as PG
+import qualified Database.SQLite.Simple         as SQLITE
+import qualified HTMLEntities.Text              as HE
+import           Magic                          (MagicFlag (MagicMimeType),
+                                                 magicCString, magicLoadDefault,
+                                                 magicOpen)
+import           Network.HTTP.Types             (hContentType)
+import           Network.HTTP.Types.Status      (status200)
+import           Network.Wai                    (Response, rawPathInfo,
+                                                 requestMethod, responseBuilder,
+                                                 responseLBS)
+import           Network.Wai.Handler.Warp       (runEnv)
+import           System.Environment             (lookupEnv)
+import           System.FilePath                (takeExtension)
 import           Text.RE.Replace
 import           Text.RE.TDFA.Text
 import           Web.Fn
-import qualified Web.Larceny                 as L
+import qualified Web.Larceny                    as L
 
-import Shoebox.Items
+import qualified Shoebox.Blob.Box               as Box
+import           Shoebox.Blob.Delete
 import qualified Shoebox.Blob.Email             as Email
 import qualified Shoebox.Blob.File              as File
-import qualified Shoebox.Blob.Box              as Box
 import           Shoebox.BlobServer
 import           Shoebox.BlobServer.Directory
 import           Shoebox.BlobServer.Memory
+import           Shoebox.Deletion
 import           Shoebox.Images
 import           Shoebox.Importer
 import           Shoebox.Indexer
 import           Shoebox.IndexServer
 import           Shoebox.IndexServer.Postgresql
 import           Shoebox.IndexServer.Sqlite
+import           Shoebox.Items
 import           Shoebox.Types
 import           Shoebox.Util
-import Shoebox.Deletion
-import Shoebox.Blob.Delete
 
 
 type Fill = L.Fill ()
@@ -102,7 +102,7 @@ initializer = do
                   Just db -> do c <- PG.connectPostgreSQL $ T.encodeUtf8 $ "dbname='" <> db <> "'"
                                 return (SomeIndexServer (PG c), db)
                   Nothing -> do sql <- readFile "migrations/sqlite.sql"
-                                c <- SQLITE.open ":memory:" --"tmp.db" 
+                                c <- SQLITE.open ":memory:" --"tmp.db"
                                 let stmts = map T.unpack $ T.splitOn "\n\n" (T.pack sql)
                                 mapM_ (\stmt -> SQLITE.execute_ c (fromString stmt)) stmts
                                 let serv = SomeIndexServer (SL c)
@@ -132,6 +132,7 @@ site ctxt = do
   log' $ T.decodeUtf8 (requestMethod (fst $ _req ctxt)) <> " " <> T.decodeUtf8 (rawPathInfo (fst $ _req ctxt))
   route ctxt [ end // param "page"          ==> indexH
              , path "static" ==> staticServe "static"
+             , path "new" // param "title" ==> newBoxH
              , segment // path "thumb" ==> thumbH
              , segment // path "delete" ==> deleteH
              , segment // path "remove" // segment ==> boxDeleteH
@@ -199,6 +200,13 @@ renderH ctxt sha = do
         ])
       (blobH ctxt sha)
 
+newBoxH :: Ctxt -> Text -> IO (Maybe Response)
+newBoxH ctxt title = do
+  rand <- Box.mkRandom
+  let box = Box.BoxBlob rand title [] Nothing
+  (SHA224 ref) <- writeBlob (_store ctxt) (BL.toStrict $ encodePretty box)
+  Box.indexBlob (_store ctxt) (_db ctxt) (SHA224 ref) box
+  redirect $ "/" <> ref
 
 blobH :: Ctxt -> SHA224 -> IO (Maybe Response)
 blobH ctxt sha = do
