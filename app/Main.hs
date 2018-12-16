@@ -5,6 +5,7 @@
 {-# LANGUAGE TupleSections     #-}
 module Main where
 
+import           Configuration.Dotenv
 import           Control.Applicative            (liftA2)
 import           Control.Logging                (log', withStderrLogging)
 import           Control.Monad
@@ -32,6 +33,7 @@ import qualified HTMLEntities.Text              as HE
 import           Magic                          (MagicFlag (MagicMimeType),
                                                  magicCString, magicLoadDefault,
                                                  magicOpen)
+import           Network.AWS.S3.Types           (BucketName (..))
 import           Network.HTTP.Types             (hContentType)
 import           Network.HTTP.Types.Status      (status200)
 import           Network.Wai                    (Response, rawPathInfo,
@@ -39,6 +41,7 @@ import           Network.Wai                    (Response, rawPathInfo,
                                                  responseLBS)
 import           Network.Wai.Handler.Warp       (runEnv)
 import           Network.Wai.Middleware.Rollbar
+import           System.Directory               (doesFileExist)
 import           System.Environment             (lookupEnv)
 import           System.FilePath                (takeExtension)
 import           Text.RE.Replace
@@ -54,6 +57,7 @@ import qualified Shoebox.Blob.File              as File
 import           Shoebox.BlobServer
 import           Shoebox.BlobServer.Directory
 import           Shoebox.BlobServer.Memory
+import           Shoebox.BlobServer.S3
 import           Shoebox.Deletion
 import           Shoebox.Images
 import           Shoebox.Importer
@@ -94,10 +98,12 @@ renderWith ctxt subs tpl =
 initializer :: IO Ctxt
 initializer = do
   lib <- L.loadTemplates "templates" L.defaultOverrides
-  pth' <- fmap T.pack <$> (lookupEnv "BLOBS")
-  (store, pth) <- case pth' of
-                    Just pth'' -> return (SomeBlobServer (FileStore pth''), pth'')
-                    Nothing    -> do
+  pth' <- fmap T.pack <$> lookupEnv "BLOBS"
+  s3' <- fmap T.pack <$> lookupEnv "S3"
+  (store, pth) <- case (pth', s3') of
+                    (Just pth'', _) -> return (SomeBlobServer (FileStore pth''), pth'')
+                    (Nothing, Just s3) -> return (SomeBlobServer (S3Store (BucketName s3)), "s3://" <> s3)
+                    (_,_) -> do
                       ht <- H.new
                       return (SomeBlobServer (MemoryStore ht), ":memory:")
   db_url <- fmap parseDatabaseUrl <$> lookupEnv "DATABASE_URL"
@@ -130,7 +136,9 @@ initializer = do
 
 main :: IO ()
 main = withStderrLogging $
-  do ctxt <- initializer
+  do de <- doesFileExist ".env"
+     when de $ loadFile False ".env"
+     ctxt <- initializer
      rb_token <- lookupEnv "ROLLBAR_ACCESS_TOKEN"
      let rb = case rb_token of
              Nothing -> id

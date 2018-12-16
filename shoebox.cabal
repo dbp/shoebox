@@ -19,6 +19,7 @@ library
                      , Shoebox.BlobServer
                      , Shoebox.BlobServer.Directory
                      , Shoebox.BlobServer.Memory
+                     , Shoebox.BlobServer.S3
                      , Shoebox.Indexer
                      , Shoebox.Images
                      , Shoebox.Importer
@@ -69,7 +70,13 @@ library
                      , html-entities
                      , http-types
                      , wai
-                     , regex 
+                     , regex
+                     , amazonka
+                     , amazonka-core
+                     , amazonka-s3
+                     , lens
+                     , conduit
+                     , resourcet
   default-language:    Haskell2010
 
 executable shoebox
@@ -100,6 +107,9 @@ executable shoebox
                      , time
                      , heroku
                      , wai-middleware-rollbar
+                     , dotenv
+                     , directory
+                     , amazonka-s3
   default-language:    Haskell2010
 
 test-suite shoebox-test
