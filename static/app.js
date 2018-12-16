@@ -1,6 +1,11 @@
 // Lazy loading of images
 window.layzr = new Layzr();
 
+// Lightbox galleries
+if (typeof window.box_ref !== "null") {
+    new LuminousGallery(document.querySelectorAll(".gallery"), {arrowNavigation: true});
+}
+
 /* lastTarget is set first on dragenter, then
    compared with during dragleave. */
 var lastTarget = null;

@@ -13,7 +13,7 @@
   <ul>
     <items>
       <li class="file">
-        <a class="thumb" href="/${contentRef}">
+        <a class="thumb gallery" href="/file/${contentRef}">
           <has-thumbnail>
             <img src="/static/icon.png" data-layzr="/${contentRef}/thumb"/>
           </has-thumbnail>

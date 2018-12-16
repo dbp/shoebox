@@ -2,6 +2,7 @@
 <html>
   <head>
     <link rel='stylesheet' href='/static/main.css'/>
+    <link rel='stylesheet' href='/static/luminous-basic.min.css'>
   </head>
   <body>
     <div style="visibility:hidden; opacity:0" class="dropzone">
@@ -16,6 +17,7 @@
     <apply-content/>
   </body>
   <script type="text/javascript" src="/static/layzr.min.js"></script>
+  <script type="text/javascript" src="/static/Luminous.min.js"></script>
   <script type="text/javascript" src="/static/app.js"></script>
   <div class="footer">
     Open source at <a href="https://github.com/dbp/shoebox">github.com/dbp/shoebox</a>.
