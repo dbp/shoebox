@@ -15,7 +15,7 @@ import           Data.Conduit.Binary          (sinkLbs)
 import qualified Data.HashTable.IO            as H
 import           Data.Text                    (Text)
 import           Network.AWS                  (Credentials (Discover), Env,
-                                               LogLevel (Debug), Logger,
+                                               LogLevel (Error), Logger,
                                                Region (NorthVirginia),
                                                envLogger, newEnv, newLogger,
                                                runAWS, runResourceT, send,
@@ -37,7 +37,7 @@ data S3Store = S3Store BucketName
 instance BlobServer S3Store where
  writeBlob (S3Store bucket) dat = do
    (SHA224 name) <- getBlobName dat
-   lgr  <- newLogger Debug stdout
+   lgr  <- newLogger Error stdout
    env  <- newEnv Discover
    runResourceT $ runAWS (env & envLogger .~ lgr) $
      within NorthVirginia $
@@ -45,7 +45,7 @@ instance BlobServer S3Store where
    return (SHA224 name)
 
  readBlob (S3Store bucket) (SHA224 t) = do
-   lgr  <- newLogger Debug stdout
+   lgr  <- newLogger Error stdout
    env  <- newEnv Discover
    catch (do contents <- runResourceT $ do
                (RsBody body) <- runAWS (env & envLogger .~ lgr) $
@@ -57,7 +57,7 @@ instance BlobServer S3Store where
           (\(e :: SomeException) -> return Nothing)
 
  enumerateBlobs (S3Store bucket) f = do
-     lgr  <- newLogger Debug stdout
+     lgr  <- newLogger Error stdout
      env  <- newEnv Discover
      void $ runResourceT $ iterateAllRefs bucket env lgr Nothing iterateResponse
    where iterateResponse :: Env -> Logger -> [SHA224] -> ResourceT IO ()
@@ -72,7 +72,7 @@ instance BlobServer S3Store where
            refs
 
  deleteBlob (S3Store bucket) (SHA224 t) = do
-   lgr  <- newLogger Debug stdout
+   lgr  <- newLogger Error stdout
    env  <- newEnv Discover
    catch (do runResourceT $ do
                runAWS (env & envLogger .~ lgr) $
@@ -83,7 +83,7 @@ instance BlobServer S3Store where
 
 getAllBlobRefs :: S3Store -> IO [SHA224]
 getAllBlobRefs (S3Store bucket) = do
-  lgr  <- newLogger Debug stdout
+  lgr  <- newLogger Error stdout
   env  <- newEnv Discover
   fmap concat $ runResourceT $ iterateAllRefs bucket env lgr Nothing (\_ _ refs -> return refs)
 
