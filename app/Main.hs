@@ -92,7 +92,8 @@ render ctxt = renderWith ctxt mempty
 
 renderWith :: Ctxt -> Substitutions -> Text -> IO (Maybe Response)
 renderWith ctxt subs tpl =
-  do t <- L.renderWith (_library ctxt) subs () (T.splitOn "/" tpl)
+  do t <- L.renderWith (_library ctxt) (subs <> L.subs [("is-editable", if _edit ctxt then L.fillChildren else L.textFill "")
+                                                       ,("not-editable", if _edit ctxt then L.textFill "" else L.fillChildren)]) () (T.splitOn "/" tpl)
      case t of
        Nothing -> return Nothing
        Just t' -> okHtml t'
@@ -164,6 +165,7 @@ site ctxt = do
              , segment // path "thumb" ==> thumbH
              , segment // path "delete" // editable ctxt ==> deleteH
              , segment // path "remove" // segment // editable ctxt ==> boxDeleteH
+             , segment // path "title" // param "title" // editable ctxt ==> boxTitleH
              , segment ==> renderH
              , segment ==> redirectH
              , path "blob" // segment ==> blobH
@@ -293,6 +295,19 @@ boxDeleteH ctxt boxSha eltSha =
                  Box.updateBox (_store ctxt) (_db ctxt) boxSha newbox
                  redirectReferer ctxt
          else redirectReferer ctxt
+
+
+boxTitleH :: Ctxt -> SHA224 -> Text -> IO (Maybe Response)
+boxTitleH ctxt boxSha title =
+  do b <- readBlob (_store ctxt) boxSha
+     case decode =<< b of
+       Nothing -> return Nothing
+       Just (Box.BoxBlob r t contents p) ->
+         if title == t
+         then redirectReferer ctxt
+         else do Box.updateBox (_store ctxt) (_db ctxt) boxSha (Box.BoxBlob r title contents p)
+                 redirectReferer ctxt
+
 
 uploadH :: Ctxt -> Maybe SHA224 -> File -> IO (Maybe Response)
 uploadH ctxt boxRef f = do
