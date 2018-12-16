@@ -4,6 +4,7 @@ module Shoebox.BlobServer.S3 where
 
 import           Control.Exception            (SomeException, catch)
 import           Control.Lens                 (each, view, (&), (.~))
+import           Control.Monad                (void)
 import           Control.Monad.IO.Class       (liftIO)
 import           Control.Monad.Trans.Resource (ResourceT)
 import qualified Crypto.Hash                  as Hash
@@ -58,17 +59,8 @@ instance BlobServer S3Store where
  enumerateBlobs (S3Store bucket) f = do
      lgr  <- newLogger Debug stdout
      env  <- newEnv Discover
-     runResourceT $ iterateRequest env lgr Nothing
-   where iterateRequest :: Env -> Logger -> Maybe SHA224 -> ResourceT IO ()
-         iterateRequest env lgr starting = do
-           (obs,trunc) <- runAWS (env & envLogger .~ lgr) $
-              within NorthVirginia $ do
-                rs <- send (listObjects bucket & loMarker .~ (fmap unSHA224 starting))
-                return $ (map (SHA224 . view (oKey . _ObjectKey)) (view lorsContents rs)
-                         ,view lorsIsTruncated rs)
-           iterateResponse env lgr obs
-           if trunc == Just True then iterateRequest env lgr (Just (last obs)) else return ()
-         iterateResponse :: Env -> Logger -> [SHA224] -> ResourceT IO ()
+     void $ runResourceT $ iterateAllRefs bucket env lgr Nothing iterateResponse
+   where iterateResponse :: Env -> Logger -> [SHA224] -> ResourceT IO ()
          iterateResponse env lgr refs =
            mapM_ (\(SHA224 ref) -> do
              (RsBody body) <- runAWS (env & envLogger .~ lgr) $
@@ -88,3 +80,20 @@ instance BlobServer S3Store where
                  send (deleteObject bucket (ObjectKey t))
              return ())
          (\(e :: SomeException) -> return ())
+
+getAllBlobRefs :: S3Store -> IO [SHA224]
+getAllBlobRefs (S3Store bucket) = do
+  lgr  <- newLogger Debug stdout
+  env  <- newEnv Discover
+  fmap concat $ runResourceT $ iterateAllRefs bucket env lgr Nothing (\_ _ refs -> return refs)
+
+iterateAllRefs :: BucketName -> Env -> Logger -> Maybe SHA224 -> (Env -> Logger -> [SHA224] -> ResourceT IO a) -> ResourceT IO [a]
+iterateAllRefs bucket env lgr starting f = do
+  (obs,trunc) <- runAWS (env & envLogger .~ lgr) $
+    within NorthVirginia $ do
+      rs <- send (listObjects bucket & loMarker .~ (fmap unSHA224 starting))
+      return $ (map (SHA224 . view (oKey . _ObjectKey)) (view lorsContents rs)
+               ,view lorsIsTruncated rs)
+  res <- f env lgr obs
+  rest <- if trunc == Just True then iterateAllRefs bucket env lgr (Just (last obs)) f else return []
+  return (res:rest)

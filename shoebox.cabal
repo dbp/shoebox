@@ -112,6 +112,21 @@ executable shoebox
                      , amazonka-s3
   default-language:    Haskell2010
 
+executable shoebox-sync
+  hs-source-dirs:      sync
+  main-is:             Main.hs
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , shoebox
+                     , text
+                     , logging
+                     , dotenv
+                     , directory
+                     , amazonka-s3
+                     , containers
+                     , bytestring
+
+  
 test-suite shoebox-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test

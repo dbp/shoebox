@@ -1,20 +1,21 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Shoebox.BlobServer.Directory where
 
-import Data.List (isPrefixOf)
-import qualified Crypto.Hash        as Hash
+import           Control.Logging
+import           Control.Monad           (filterM, void, when)
+import qualified Crypto.Hash             as Hash
 import           Data.ByteString         (ByteString)
 import qualified Data.ByteString         as BS
 import qualified Data.ByteString.Builder as Builder
 import qualified Data.ByteString.Lazy    as BL
+import           Data.List               (isPrefixOf)
 import           Data.Monoid
 import           Data.Text               (Text)
 import qualified Data.Text               as T
 import qualified Data.Text.Encoding      as T
-import Control.Logging
 import           System.Directory        (createDirectoryIfMissing,
-                                          doesFileExist, listDirectory, removeFile, doesDirectoryExist)
-import Control.Monad (when, filterM)
+                                          doesDirectoryExist, doesFileExist,
+                                          listDirectory, removeFile)
 
 import           Shoebox.BlobServer
 import           Shoebox.Types
@@ -40,18 +41,26 @@ instance BlobServer FileStore where
        then Just <$> BL.readFile filename
        else return Nothing
 
- enumerateBlobs (FileStore dir) f = enum [dir <> "/sha224"] 0
-  where
-    enum :: [Text] -> Int -> IO ()
-    enum pth 3 =
+ enumerateBlobs (FileStore dir) f =
+   void $ iterateAllPaths [dir <> "/sha224"] 0 $ \pth ->
       do dat <- BL.readFile $ T.unpack $ T.intercalate "/" pth
          f (SHA224 $ T.takeWhile (/= '.') (last pth)) dat
-    enum pth n = do let dir = T.unpack $ T.intercalate "/" pth
-                    fs <- listDirectory dir
-                    let fs' = filter (not . isPrefixOf ".") fs
-                    mapM_ (\f -> enum (pth <> [T.pack f]) (n+1)) fs'
+         return []
 
  deleteBlob (FileStore dir) (SHA224 t) =
    do let filename = getDir dir t <> T.unpack t <> ".dat"
       ex <- doesFileExist filename
       when ex (removeFile filename)
+
+getAllBlobRefs :: FileStore -> IO [SHA224]
+getAllBlobRefs (FileStore dir) =
+  iterateAllPaths [dir <> "/sha224"] 0 $ \pth ->
+    return [SHA224 $ T.takeWhile (/= '.') (last pth)]
+
+iterateAllPaths :: [Text] -> Int -> ([Text] -> IO [a]) -> IO [a]
+iterateAllPaths pth 3 f = f pth
+iterateAllPaths pth n f = do
+  let dir = T.unpack $ T.intercalate "/" pth
+  fs <- listDirectory dir
+  let fs' = filter (not . isPrefixOf ".") fs
+  concat <$> mapM (\fi -> iterateAllPaths (pth <> [T.pack fi]) (n+1) f) fs'
