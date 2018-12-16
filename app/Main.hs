@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes       #-}
 {-# LANGUAGE RankNTypes        #-}
@@ -37,6 +38,7 @@ import           Network.Wai                    (Response, rawPathInfo,
                                                  requestMethod, responseBuilder,
                                                  responseLBS)
 import           Network.Wai.Handler.Warp       (runEnv)
+import           Network.Wai.Middleware.Rollbar
 import           System.Environment             (lookupEnv)
 import           System.FilePath                (takeExtension)
 import           Text.RE.Replace
@@ -129,7 +131,11 @@ initializer = do
 main :: IO ()
 main = withStderrLogging $
   do ctxt <- initializer
-     runEnv 3000 $ toWAI ctxt site
+     rb_token <- lookupEnv "ROLLBAR_ACCESS_TOKEN"
+     let rb = case rb_token of
+             Nothing -> id
+             Just tok -> exceptions (Settings (fromString tok) "production" :: Settings '[])
+     runEnv 3000 $ rb $ toWAI ctxt site
 
 instance FromParam SHA224 where
   fromParam [x] | "sha224-" `T.isPrefixOf` x = Right $ SHA224 x

@@ -99,6 +99,7 @@ executable shoebox
                      , hashtables
                      , time
                      , heroku
+                     , wai-middleware-rollbar
   default-language:    Haskell2010
 
 test-suite shoebox-test
