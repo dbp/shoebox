@@ -165,6 +165,7 @@ site ctxt = do
              , segment // path "thumb" ==> thumbH
              , segment // path "delete" // editable ctxt ==> deleteH
              , segment // path "remove" // segment // editable ctxt ==> boxDeleteH
+             , segment // path "preview" // segment // editable ctxt ==> boxPreviewH
              , segment // path "title" // param "title" // editable ctxt ==> boxTitleH
              , segment ==> renderH
              , segment ==> redirectH
@@ -295,6 +296,18 @@ boxDeleteH ctxt boxSha eltSha =
                  Box.updateBox (_store ctxt) (_db ctxt) boxSha newbox
                  redirectReferer ctxt
          else redirectReferer ctxt
+
+
+boxPreviewH :: Ctxt -> SHA224 -> SHA224 -> IO (Maybe Response)
+boxPreviewH ctxt boxSha preview =
+  do b <- readBlob (_store ctxt) boxSha
+     case decode =<< b of
+       Nothing -> return Nothing
+       Just (Box.BoxBlob r t contents p) ->
+         if Just preview == p
+         then redirectReferer ctxt
+         else do Box.updateBox (_store ctxt) (_db ctxt) boxSha (Box.BoxBlob r t contents (Just preview))
+                 redirectReferer ctxt
 
 
 boxTitleH :: Ctxt -> SHA224 -> Text -> IO (Maybe Response)

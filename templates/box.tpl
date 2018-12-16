@@ -25,6 +25,7 @@
         </a>
         <is-editable>
           <a href="/${box-ref}/remove/${contentRef}" class="delete" onclick="return confirm('Are you sure?');">x</a>
+          <a href="/${box-ref}/preview/${contentRef}" class="preview">o</a>
         </is-editable>
       </li>
     </items>
