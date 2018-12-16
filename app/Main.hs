@@ -67,7 +67,8 @@ type Fill = L.Fill ()
 type Library = L.Library ()
 type Substitutions = L.Substitutions ()
 
-data Ctxt = Ctxt { _req     :: FnRequest
+data Ctxt = Ctxt { _edit    :: Bool
+                 , _req     :: FnRequest
                  , _store   :: SomeBlobServer
                  , _db      :: SomeIndexServer
                  , _library :: Library
@@ -114,8 +115,10 @@ initializer = do
                                 index store serv
                                 index store serv
                                 return (serv, ":memory:")
-  log' $ "Opening the Shoebox [Blobs " <> pth <> " Index " <> nm <> "]"
-  return (Ctxt defaultFnRequest store serv lib)
+  public <- fmap (fromMaybe "0") $ lookupEnv "PUBLIC"
+  let edit = public == "0"
+  log' $ "Opening " <> (if edit then "~PRIVATE~" else "~PUBLIC~") <> " Shoebox [Blobs " <> pth <> " Index " <> nm <> "]"
+  return (Ctxt edit defaultFnRequest store serv lib)
 
 main :: IO ()
 main = withStderrLogging $
@@ -127,22 +130,25 @@ instance FromParam SHA224 where
   fromParam []  = Left ParamMissing
   fromParam _   = Left ParamTooMany
 
+editable :: Ctxt -> Req -> IO (Maybe (Req, a -> a))
+editable ctxt req = return $ if _edit ctxt then Just (req, id) else Nothing
+
 site :: Ctxt -> IO Response
 site ctxt = do
   log' $ T.decodeUtf8 (requestMethod (fst $ _req ctxt)) <> " " <> T.decodeUtf8 (rawPathInfo (fst $ _req ctxt))
-  route ctxt [ end // param "page"          ==> indexH
+  route ctxt [ end // param "page" // editable ctxt ==> indexH
              , path "static" ==> staticServe "static"
-             , path "new" // param "title" ==> newBoxH
+             , path "new" // param "title" // editable ctxt ==> newBoxH
              , segment // path "thumb" ==> thumbH
-             , segment // path "delete" ==> deleteH
-             , segment // path "remove" // segment ==> boxDeleteH
+             , segment // path "delete" // editable ctxt ==> deleteH
+             , segment // path "remove" // segment // editable ctxt ==> boxDeleteH
              , segment ==> renderH
              , segment ==> redirectH
              , path "blob" // segment ==> blobH
              , path "file" // segment ==> \ctxt sha -> File.serve (_store ctxt) sha
              , path "raw" // segment ==> rawH
              , path "upload" // param "box" // file "file" !=> uploadH
-             , path "search" // param "q" ==> searchH
+             , path "search" // param "q" // editable ctxt ==> searchH
              , path "reindex" ==> reindexH
              , path "wipe" ==> wipeH
              ]
