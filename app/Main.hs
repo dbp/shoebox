@@ -7,6 +7,7 @@ module Main where
 
 import           Configuration.Dotenv
 import           Control.Applicative            (liftA2)
+import           Control.Concurrent             (forkIO)
 import           Control.Logging                (log', withStderrLogging)
 import           Control.Monad
 import           Data.Aeson
@@ -200,8 +201,8 @@ searchH ctxt q = do
 
 reindexH :: Ctxt -> IO (Maybe Response)
 reindexH ctxt = do
-  delete (_store ctxt)
-  index (_store ctxt) (_db ctxt)
+  forkIO $ do delete (_store ctxt)
+              index (_store ctxt) (_db ctxt)
   okText "OK."
 
 wipeH :: Ctxt -> IO (Maybe Response)
