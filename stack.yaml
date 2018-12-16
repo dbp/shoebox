@@ -12,3 +12,4 @@ packages:
 extra-deps:
 - html-entities-1.1.4.2
 - logging-3.0.5
+- heroku-0.1.2.3

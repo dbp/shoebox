@@ -17,8 +17,8 @@ import           Data.ByteString.Unsafe         (unsafeUseAsCStringLen)
 import qualified Data.HashTable.IO              as H
 import           Data.Map                       (Map)
 import qualified Data.Map                       as M
-import           Data.Maybe                     (catMaybes, fromMaybe, isJust,
-                                                 listToMaybe)
+import           Data.Maybe                     (catMaybes, fromJust, fromMaybe,
+                                                 isJust, listToMaybe)
 import           Data.Monoid                    ((<>))
 import           Data.String                    (fromString)
 import           Data.Text                      (Text)
@@ -42,6 +42,7 @@ import           System.FilePath                (takeExtension)
 import           Text.RE.Replace
 import           Text.RE.TDFA.Text
 import           Web.Fn
+import           Web.Heroku                     (parseDatabaseUrl)
 import qualified Web.Larceny                    as L
 
 import qualified Shoebox.Blob.Box               as Box
@@ -97,24 +98,29 @@ initializer = do
                     Nothing    -> do
                       ht <- H.new
                       return (SomeBlobServer (MemoryStore ht), ":memory:")
-  db' <- fmap T.pack <$> lookupEnv "INDEX"
+  db_url <- fmap parseDatabaseUrl <$> lookupEnv "DATABASE_URL"
+  idx' <- fmap T.pack <$> lookupEnv "INDEX"
   delete store
-  (serv, nm) <- case db' of
-                  Just db -> do c <- PG.connectPostgreSQL $ T.encodeUtf8 $ "dbname='" <> db <> "'"
-                                return (SomeIndexServer (PG c), db)
-                  Nothing -> do sql <- readFile "migrations/sqlite.sql"
-                                c <- SQLITE.open ":memory:" --"tmp.db"
-                                let stmts = map T.unpack $ T.splitOn "\n\n" (T.pack sql)
-                                mapM_ (\stmt -> SQLITE.execute_ c (fromString stmt)) stmts
-                                let serv = SomeIndexServer (SL c)
-                                log' "Running indexer to populate :memory: index."
-                                -- NOTE(dbp 2017-05-29): Run many times because
-                                -- we need permanodes in DB before files stored
-                                -- in them are indexed
-                                index store serv
-                                index store serv
-                                index store serv
-                                return (serv, ":memory:")
+  (serv, nm) <- case (db_url, idx') of
+                  (Just ps,_) -> do
+                    c <- PG.connectPostgreSQL $ T.encodeUtf8 $ T.intercalate " " $ map (\(k,v) -> k <> "=" <> v) ps
+                    return (SomeIndexServer (PG c), fromJust (lookup "dbname" ps))
+                  (Nothing, Just idx) -> do
+                    do c <- PG.connectPostgreSQL $ T.encodeUtf8 $ "dbname='" <> idx <> "'"
+                       return (SomeIndexServer (PG c), idx)
+                  (_, _) -> do sql <- readFile "migrations/sqlite.sql"
+                               c <- SQLITE.open ":memory:" --"tmp.db"
+                               let stmts = map T.unpack $ T.splitOn "\n\n" (T.pack sql)
+                               mapM_ (\stmt -> SQLITE.execute_ c (fromString stmt)) stmts
+                               let serv = SomeIndexServer (SL c)
+                               log' "Running indexer to populate :memory: index."
+                               -- NOTE(dbp 2017-05-29): Run many times because
+                               -- we need permanodes in DB before files stored
+                               -- in them are indexed
+                               index store serv
+                               index store serv
+                               index store serv
+                               return (serv, ":memory:")
   public <- fmap (fromMaybe "0") $ lookupEnv "PUBLIC"
   let edit = public == "0"
   log' $ "Opening " <> (if edit then "~PRIVATE~" else "~PUBLIC~") <> " Shoebox [Blobs " <> pth <> " Index " <> nm <> "]"

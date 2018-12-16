@@ -98,6 +98,7 @@ executable shoebox
                      , sqlite-simple
                      , hashtables
                      , time
+                     , heroku
   default-language:    Haskell2010
 
 test-suite shoebox-test

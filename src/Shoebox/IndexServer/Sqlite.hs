@@ -45,7 +45,9 @@ instance ToField Value where
   toField v = toField (encode v)
 
 instance IndexServer SqliteIndexer where
-  wipe (SL conn) = void $ execute_ conn "DELETE FROM items"
+  wipe (SL conn) = do
+    void $ execute_ conn "DELETE FROM items"
+    void $ execute_ conn "DELETE FROM redirs"
 
   makeItem (SL conn) sha =
     void $ execute conn "INSERT OR IGNORE INTO items (blob_ref) VALUES (?)" (Only sha)

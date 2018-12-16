@@ -34,7 +34,9 @@ instance FromRow Item where
 
 
 instance IndexServer PostgresIndexer where
-  wipe (PG conn) = void $ execute_ conn "delete from items"
+  wipe (PG conn) = do
+    void $ execute_ conn "DELETE FROM items"
+    void $ execute_ conn "DELETE FROM redirs"
 
   makeItem (PG conn) sha =
     void $ execute conn "INSERT INTO items (blob_ref) VALUES (?) ON CONFLICT DO NOTHING" (Only sha)
@@ -42,17 +44,17 @@ instance IndexServer PostgresIndexer where
   removeItem (PG conn) sha =
     void $ execute conn "DELETE FROM items where blob_ref = ?" (Only sha)
 
-  setSearchHigh (PG conn) (SHA224 sha) text =
-    void $ execute conn "UPDATE items SET search_high = ? WHERE attributes->'camliContent' = ?" (text, String sha)
+  setSearchHigh (PG conn) sha text =
+    void $ execute conn "UPDATE items SET search_high = ? WHERE blob_ref = ?" (text, sha)
 
-  setSearchLow (PG conn) (SHA224 sha) text =
-    void $ execute conn "UPDATE items SET search_low = ? WHERE attributes->'camliContent' = ?" (text, String sha)
+  setSearchLow (PG conn) sha text =
+    void $ execute conn "UPDATE items SET search_low = ? WHERE blob_ref = ?" (text, sha)
 
-  setThumbnail (PG conn) (SHA224 sha) jpg =
-     void $ execute conn "UPDATE items SET thumbnail = ? WHERE attributes->'camliContent' = ?" (Binary jpg, String sha)
+  setThumbnail (PG conn) sha jpg =
+     void $ execute conn "UPDATE items SET thumbnail = ? WHERE blob_ref = ?" (Binary jpg, sha)
 
-  setPreview (PG conn) (SHA224 sha) prev =
-    void $ execute conn "UPDATE items SET preview = ? WHERE attributes->'camliContent' = ?" (prev, String sha)
+  setPreview (PG conn) sha prev =
+    void $ execute conn "UPDATE items SET preview = ? WHERE blob_ref = ?" (prev, sha)
 
   showInRoot (PG conn) sha =
     void $ execute conn "UPDATE items SET show_in_root = true where blob_ref = ?" (Only sha)
@@ -66,7 +68,20 @@ instance IndexServer PostgresIndexer where
   getThumbnail (PG conn) (SHA224 sha) =
     do res <- listToMaybe <$> query conn "SELECT thumbnail FROM items WHERE blob_ref = ?" (Only sha)
        case res of
-         Nothing                  -> return Nothing
-         Just (Only (Binary jpg)) -> return (Just jpg)
-  getRedirections (PG conn) from = error "Not implemented"
-  setRedirection (PG conn) from to = error "Not implemented"
+         Nothing                         -> return Nothing
+         Just (Only Nothing)             -> return Nothing
+         Just (Only (Just (Binary jpg))) -> return (Just jpg)
+
+  getRedirections (PG conn) from =
+    fmap (map head) $ query conn "SELECT target FROM redirs WHERE src = ?" (Only from)
+  setRedirection (PG conn) from to =  do
+    targets <- getRedirections (PG conn) to
+    case targets of
+      [] -> do
+        void $ execute conn "INSERT INTO redirs (src,target) SELECT ?,? WHERE NOT EXISTS (SELECT 1 FROM redirs WHERE src = ? AND target = ?);" (from, to, from, to)
+        -- NOTE(dbp 2018-12-15): If we insert B -> C, any A -> B should be updated to A -> C.
+        void $ execute conn "UPDATE redirs SET target = ? WHERE target = ?;" (to, from)
+      ts -> do
+        -- NOTE(dbp 2018-12-15): This means that we wanted A -> B, but B -> C1,C2,... already, so do A -> C1, A -> C2...
+        mapM_ (\t -> do execute conn "INSERT INTO redirs (src,target) SELECT ?,? WHERE NOT EXISTS (SELECT 1 FROM redirs WHERE src = ? AND target = ?);" (from, t, from, t)
+                        execute conn "UPDATE redirs SET target = ? WHERE target = ?;" (t, from)) ts
