@@ -28,6 +28,7 @@ getDir dir name = T.unpack $ dir <> "/sha224/" <> T.take 2 (T.drop 7 name) <> "/
 instance BlobServer FileStore where
  writeBlob (FileStore dir) dat = do
    (SHA224 name) <- getBlobName dat
+   log' $ "WRITE " <> name
    let holder = getDir dir name
    createDirectoryIfMissing True holder
    let filename = holder <> T.unpack name <> ".dat"
@@ -35,20 +36,23 @@ instance BlobServer FileStore where
    return (SHA224 name)
 
  readBlob (FileStore dir) (SHA224 t) = if not ("sha224-" `T.isPrefixOf` t) then error $ T.unpack $ "SHA224 does not start with 'sha224-': " <> t else
-  do let filename = getDir dir t <> T.unpack t <> ".dat"
+  do log' $ "READ " <> t
+     let filename = getDir dir t <> T.unpack t <> ".dat"
      ex <- doesFileExist filename
      if ex
        then Just <$> BL.readFile filename
        else return Nothing
 
- enumerateBlobs (FileStore dir) f =
+ enumerateBlobs (FileStore dir) f = do
+   log' "ENUMERATE"
    void $ iterateAllPaths [dir <> "/sha224"] 0 $ \pth ->
       do dat <- BL.readFile $ T.unpack $ T.intercalate "/" pth
          f (SHA224 $ T.takeWhile (/= '.') (last pth)) dat
          return []
 
  deleteBlob (FileStore dir) (SHA224 t) =
-   do let filename = getDir dir t <> T.unpack t <> ".dat"
+   do log' $ "DELETE " <> t
+      let filename = getDir dir t <> T.unpack t <> ".dat"
       ex <- doesFileExist filename
       when ex (removeFile filename)
 

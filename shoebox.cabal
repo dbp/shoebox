@@ -20,6 +20,7 @@ library
                      , Shoebox.BlobServer.Directory
                      , Shoebox.BlobServer.Memory
                      , Shoebox.BlobServer.S3
+                     , Shoebox.BlobServer.CachingMemory
                      , Shoebox.Indexer
                      , Shoebox.Images
                      , Shoebox.Importer

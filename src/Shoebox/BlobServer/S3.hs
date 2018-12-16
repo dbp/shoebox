@@ -4,6 +4,7 @@ module Shoebox.BlobServer.S3 where
 
 import           Control.Exception            (SomeException, catch)
 import           Control.Lens                 (each, view, (&), (.~))
+import           Control.Logging              (log')
 import           Control.Monad                (void)
 import           Control.Monad.IO.Class       (liftIO)
 import           Control.Monad.Trans.Resource (ResourceT)
@@ -13,6 +14,7 @@ import qualified Data.ByteString.Lazy         as BL
 import           Data.Conduit                 (($$+-))
 import           Data.Conduit.Binary          (sinkLbs)
 import qualified Data.HashTable.IO            as H
+import           Data.Monoid                  ((<>))
 import           Data.Text                    (Text)
 import           Network.AWS                  (Credentials (Discover), Env,
                                                LogLevel (Error), Logger,
@@ -37,6 +39,7 @@ data S3Store = S3Store BucketName
 instance BlobServer S3Store where
  writeBlob (S3Store bucket) dat = do
    (SHA224 name) <- getBlobName dat
+   log' $ "WRITE " <> name
    lgr  <- newLogger Error stdout
    env  <- newEnv Discover
    runResourceT $ runAWS (env & envLogger .~ lgr) $
@@ -45,6 +48,7 @@ instance BlobServer S3Store where
    return (SHA224 name)
 
  readBlob (S3Store bucket) (SHA224 t) = do
+   log' $ "READ " <> t
    lgr  <- newLogger Error stdout
    env  <- newEnv Discover
    catch (do contents <- runResourceT $ do
@@ -57,6 +61,7 @@ instance BlobServer S3Store where
           (\(e :: SomeException) -> return Nothing)
 
  enumerateBlobs (S3Store bucket) f = do
+     log' "ENUMERATE"
      lgr  <- newLogger Error stdout
      env  <- newEnv Discover
      void $ runResourceT $ iterateAllRefs bucket env lgr Nothing iterateResponse
@@ -72,6 +77,7 @@ instance BlobServer S3Store where
            refs
 
  deleteBlob (S3Store bucket) (SHA224 t) = do
+   log' $ "DELETE " <> t
    lgr  <- newLogger Error stdout
    env  <- newEnv Discover
    catch (do runResourceT $ do

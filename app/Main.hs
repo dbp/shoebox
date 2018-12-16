@@ -6,56 +6,58 @@
 module Main where
 
 import           Configuration.Dotenv
-import           Control.Applicative            (liftA2)
-import           Control.Concurrent             (forkIO)
-import           Control.Logging                (log', withStderrLogging)
+import           Control.Applicative              (liftA2)
+import           Control.Concurrent               (forkIO)
+import           Control.Logging                  (log', withStderrLogging)
 import           Control.Monad
 import           Data.Aeson
-import           Data.Aeson.Encode.Pretty       (encodePretty)
-import           Data.Binary.Builder            (Builder)
-import qualified Data.Binary.Builder            as Builder
-import           Data.ByteString                (ByteString)
-import qualified Data.ByteString.Lazy           as BL
-import           Data.ByteString.Unsafe         (unsafeUseAsCStringLen)
-import qualified Data.HashTable.IO              as H
-import           Data.Map                       (Map)
-import qualified Data.Map                       as M
-import           Data.Maybe                     (catMaybes, fromJust, fromMaybe,
-                                                 isJust, listToMaybe)
-import           Data.Monoid                    ((<>))
-import           Data.String                    (fromString)
-import           Data.Text                      (Text)
-import qualified Data.Text                      as T
-import qualified Data.Text.Encoding             as T
+import           Data.Aeson.Encode.Pretty         (encodePretty)
+import           Data.Binary.Builder              (Builder)
+import qualified Data.Binary.Builder              as Builder
+import           Data.ByteString                  (ByteString)
+import qualified Data.ByteString.Lazy             as BL
+import           Data.ByteString.Unsafe           (unsafeUseAsCStringLen)
+import qualified Data.HashTable.IO                as H
+import           Data.Map                         (Map)
+import qualified Data.Map                         as M
+import           Data.Maybe                       (catMaybes, fromJust,
+                                                   fromMaybe, isJust,
+                                                   listToMaybe)
+import           Data.Monoid                      ((<>))
+import           Data.String                      (fromString)
+import           Data.Text                        (Text)
+import qualified Data.Text                        as T
+import qualified Data.Text.Encoding               as T
 import           Data.Time.Clock
-import qualified Database.PostgreSQL.Simple     as PG
-import qualified Database.SQLite.Simple         as SQLITE
-import qualified HTMLEntities.Text              as HE
-import           Magic                          (MagicFlag (MagicMimeType),
-                                                 magicCString, magicLoadDefault,
-                                                 magicOpen)
-import           Network.AWS.S3.Types           (BucketName (..))
-import           Network.HTTP.Types             (hContentType)
-import           Network.HTTP.Types.Status      (status200)
-import           Network.Wai                    (Response, rawPathInfo,
-                                                 requestMethod, responseBuilder,
-                                                 responseLBS)
-import           Network.Wai.Handler.Warp       (runEnv)
+import qualified Database.PostgreSQL.Simple       as PG
+import qualified Database.SQLite.Simple           as SQLITE
+import qualified HTMLEntities.Text                as HE
+import           Magic                            (MagicFlag (MagicMimeType),
+                                                   magicCString,
+                                                   magicLoadDefault, magicOpen)
+import           Network.AWS.S3.Types             (BucketName (..))
+import           Network.HTTP.Types               (hContentType)
+import           Network.HTTP.Types.Status        (status200)
+import           Network.Wai                      (Response, rawPathInfo,
+                                                   requestMethod,
+                                                   responseBuilder, responseLBS)
+import           Network.Wai.Handler.Warp         (runEnv)
 import           Network.Wai.Middleware.Rollbar
-import           System.Directory               (doesFileExist)
-import           System.Environment             (lookupEnv)
-import           System.FilePath                (takeExtension)
+import           System.Directory                 (doesFileExist)
+import           System.Environment               (lookupEnv)
+import           System.FilePath                  (takeExtension)
 import           Text.RE.Replace
 import           Text.RE.TDFA.Text
 import           Web.Fn
-import           Web.Heroku                     (parseDatabaseUrl)
-import qualified Web.Larceny                    as L
+import           Web.Heroku                       (parseDatabaseUrl)
+import qualified Web.Larceny                      as L
 
-import qualified Shoebox.Blob.Box               as Box
+import qualified Shoebox.Blob.Box                 as Box
 import           Shoebox.Blob.Delete
-import qualified Shoebox.Blob.Email             as Email
-import qualified Shoebox.Blob.File              as File
+import qualified Shoebox.Blob.Email               as Email
+import qualified Shoebox.Blob.File                as File
 import           Shoebox.BlobServer
+import           Shoebox.BlobServer.CachingMemory
 import           Shoebox.BlobServer.Directory
 import           Shoebox.BlobServer.Memory
 import           Shoebox.BlobServer.S3
@@ -103,13 +105,14 @@ initializer = do
   s3' <- fmap T.pack <$> lookupEnv "S3"
   (store, pth) <- case (pth', s3') of
                     (Just pth'', _) -> return (SomeBlobServer (FileStore pth''), pth'')
-                    (Nothing, Just s3) -> return (SomeBlobServer (S3Store (BucketName s3)), "s3://" <> s3)
+                    (Nothing, Just s3) -> do
+                      ht <- H.new
+                      return (SomeBlobServer (CachingMemoryStore ht (SomeBlobServer (S3Store (BucketName s3)))), "s3://" <> s3)
                     (_,_) -> do
                       ht <- H.new
                       return (SomeBlobServer (MemoryStore ht), ":memory:")
   db_url <- fmap parseDatabaseUrl <$> lookupEnv "DATABASE_URL"
   idx' <- fmap T.pack <$> lookupEnv "INDEX"
-  delete store
   (serv, nm) <- case (db_url, idx') of
                   (Just ps,_) -> do
                     c <- PG.connectPostgreSQL $ T.encodeUtf8 $ T.intercalate " " $ map (\(k,v) -> k <> "=" <> v) ps
@@ -123,10 +126,8 @@ initializer = do
                                mapM_ (\stmt -> SQLITE.execute_ c (fromString stmt)) stmts
                                let serv = SomeIndexServer (SL c)
                                log' "Running indexer to populate :memory: index."
-                               -- NOTE(dbp 2017-05-29): Run many times because
-                               -- we need permanodes in DB before files stored
-                               -- in them are indexed
-                               index store serv
+                               -- NOTE(dbp 2017-05-29): Run twice we need items
+                               -- in DB before files stored in them are indexed
                                index store serv
                                index store serv
                                return (serv, ":memory:")
@@ -219,13 +220,14 @@ renderH ctxt sha = do
   case res' of
     Nothing  -> return Nothing
     Just bs ->
-      liftA2 mplus
-      (mmsum $ map (\f -> f (_store ctxt) (_db ctxt) (renderWith ctxt) sha bs)
-        [Box.toHtml
-        ,File.toHtml
-        ,Email.toHtml
-        ])
-      (blobH ctxt sha)
+      do res <- mmsum $ map (\f -> f (_store ctxt) (_db ctxt) (renderWith ctxt) sha bs)
+                 [Box.toHtml
+                 ,File.toHtml
+                 ,Email.toHtml
+                 ]
+         case res of
+           Nothing  -> blobH ctxt sha
+           Just res -> return (Just res)
 
 newBoxH :: Ctxt -> Text -> IO (Maybe Response)
 newBoxH ctxt title = do

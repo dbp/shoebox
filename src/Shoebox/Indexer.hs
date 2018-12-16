@@ -9,11 +9,12 @@ import           Control.Monad        (msum, void, when)
 import           Data.Aeson           (decode)
 import qualified Data.ByteString.Lazy as BL
 import           Data.Monoid          ((<>))
+import qualified Data.Text            as T
 
-import qualified Shoebox.Blob.Email      as Email
-import qualified Shoebox.Blob.File       as File
-import qualified Shoebox.Blob.Replace       as Replace
-import qualified Shoebox.Blob.Box as Box
+import qualified Shoebox.Blob.Box     as Box
+import qualified Shoebox.Blob.Email   as Email
+import qualified Shoebox.Blob.File    as File
+import qualified Shoebox.Blob.Replace as Replace
 import           Shoebox.BlobServer
 import           Shoebox.Images
 import           Shoebox.IndexServer
@@ -34,8 +35,8 @@ decoders st se sha d =
 index :: SomeBlobServer -> SomeIndexServer -> IO ()
 index a s = do
   enumerateBlobs a $ \sha dat -> do
-    putStrLn $ show sha
+    log' $ "INDEX" <> T.pack (show sha)
     case msum $ decoders a s sha dat of
       Just a  -> a
       Nothing -> return ()
-  putStrLn "\rDONE                                                            "
+
