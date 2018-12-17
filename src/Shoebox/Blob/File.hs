@@ -146,14 +146,21 @@ addFile store serv box file = do
               return fref
   case box of
     Nothing -> return ()
-    Just boxRef -> do
+    Just boxRef' -> do
+      -- NOTE(dbp 2018-12-16): We look to see if there is actually now a newer version. In the case of conflicts, we simply pick the first one, as we don't want to add to all (at least for now...)
+      redirs <- getRedirections serv boxRef'
+      let boxRef = case redirs of
+                     []    -> boxRef'
+                     (x:_) -> x
       mb <- readBlob store boxRef
       case decode =<< mb of
         Nothing -> return ()
         Just (BoxBlob r t c pr') -> do
           let pr = if isNothing pr' then Just fref else pr'
-          let newbox = BoxBlob r t (c ++ [fref]) pr
-          Box.updateBox store serv boxRef newbox
+          if fref `elem` c
+            then return ()
+            else do let newbox = BoxBlob r t (c ++ [fref]) pr
+                    Box.updateBox store serv boxRef newbox
 
 
 toHtml :: SomeBlobServer -> SomeIndexServer -> (L.Substitutions () -> Text -> IO (Maybe Response)) -> SHA224 -> BL.ByteString -> IO (Maybe Response)
