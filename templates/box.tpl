@@ -64,7 +64,7 @@
   <div class="row">
     <items>
       <div class="col s3">
-        <div class="card">
+        <div class="card hoverable">
           <div class="card-image">
             <a class="thumb gallery" href="/file/${contentRef}">
               <has-thumbnail>

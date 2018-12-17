@@ -15,8 +15,8 @@
       <div class="nav-wrapper container"><a id="logo-container" href="/" class="brand-logo">Shoebox</a>
         <is-editable>
           <ul class="right">
-            <li><a href="/reindex" class="btn btn-small">Reindex<i class="material-icons right">update</i></a></li>
-            <li><a href="/wipe" class="btn btn-small" onclick="return confirm('Are you sure you want to wipe the index?');">Wipe Index<i class="material-icons right">delete_forever</i></a></li>
+            <li><a href="/reindex" class="btn-floating btn-small waves-effect waves-light red"><i class="material-icons right">update</i></a></li>
+            <li><a href="/wipe" class="btn-floating btn-small waves-effect waves-light red" onclick="return confirm('Are you sure you want to wipe the index?');"><i class="material-icons right">delete_forever</i></a></li>
           </ul>
         </is-editable>
       </div>

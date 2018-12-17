@@ -8,6 +8,10 @@
     margin-bottom: 0;
 }
 
+.lum-lightbox {
+    z-index: 10;
+}
+
 .dropzone {
     /* positions to point 0,0 - required for z-index */
     position: fixed; top: 0; left: 0;

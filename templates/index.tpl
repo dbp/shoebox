@@ -22,7 +22,7 @@
       </div>
     </items>
     <div class="col s3">
-      <div class="card">
+      <div class="card hoverable">
         <div class="card-content">
           <div class="row no-marg-bot">
             <form action="/new" class="col s12 no-marg-bot">
