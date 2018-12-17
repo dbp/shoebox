@@ -10,16 +10,29 @@
       <is-editable>
         <form class="col s6" action="/${box-ref}/title">
           <div class="row no-marg-bot">
-            <div class="input-field col s7 pull-s5 no-marg-bot">
-              <label for="title">Title</label>
-              <input name="title" type="text" value="${box-title}"/>
+            <div class="col s7">
+              <div class="row no-marg-bot">
+                <div class="col s12"
+                  <label for="title">Title</label>
+                  <input name="title" type="text" value="${box-title}"/>
+                </div>
+              </div>
+              <div class="row no-marg-bot">
+                <div class="input-field col s12">
+                  <button class="btn btn-small waves-effect waves-light" type="submit" name="action">Save
+                    <i class="material-icons right">save</i>
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-          <div class="row">
-            <div class="input-field col s5 pull-s7">
-              <button class="btn btn-small waves-effect waves-light" type="submit" name="action">Save
-                <i class="material-icons right">save</i>
-              </button>
+            <div class="col s4">
+              <preview>
+                <div class="card">
+                  <div class="card-image">
+                    <img src="/static/icon.png" data-layzr="/${ref}/thumb"/>
+                  </div>
+                </div>
+              </preview>
             </div>
           </div>
         </form>

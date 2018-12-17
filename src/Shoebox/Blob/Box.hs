@@ -9,7 +9,8 @@ import           Data.Aeson.Types
 import           Data.ByteString          (ByteString)
 import qualified Data.ByteString.Builder  as Builder
 import qualified Data.ByteString.Lazy     as BL
-import           Data.Maybe               (catMaybes)
+import           Data.Maybe               (catMaybes, fromJust, isJust,
+                                           isNothing)
 import           Data.Text                (Text)
 import qualified Data.Text.Encoding       as T
 import           Data.Time.Clock
@@ -65,18 +66,25 @@ indexBlob store serv sha (BoxBlob _ title contents prev) = do
 toHtml :: SomeBlobServer -> SomeIndexServer -> (L.Substitutions () -> Text -> IO (Maybe Response)) -> SHA224 -> BL.ByteString -> IO (Maybe Response)
 toHtml store serv renderWith (SHA224 sha) bs =
   case decode bs of
-    Just (BoxBlob _ title contents _) -> do
+    Just (BoxBlob _ title contents p) -> do
       is <- fmap catMaybes $ mapM (getItem serv) contents
+      prev <- case p of
+                Nothing -> return Nothing
+                Just p' -> getItem serv p'
       urls <- getWithUrl serv (SHA224 sha)
       renderWith (L.subs [("box-ref", L.textFill sha)
                          ,("box-title", L.textFill title)
                          ,("urls", L.mapSubs urlSubs urls)
-                         ,("items", L.mapSubs itemSubs is)])
+                         ,("items", L.mapSubs itemSubs is)
+                         ,("has-preview", if isJust prev then L.fillChildren else L.textFill "")
+                         ,("no-preview", if isNothing prev then L.fillChildren else L.textFill "")
+                         ,("preview", if isJust prev then L.fillChildrenWith (prevSubs (fromJust prev)) else L.textFill "")])
         "box"
     _ -> return Nothing
   where urlSubs (SHA224 urlsha, url) =
           L.subs [("url-ref", L.textFill urlsha)
                  ,("url", L.textFill url)]
+        prevSubs (Item (SHA224 ref) _ _) = L.subs [("ref", L.textFill ref)]
 
 updateBox :: SomeBlobServer -> SomeIndexServer -> SHA224 -> BoxBlob -> IO ()
 updateBox store serv oldRef (BoxBlob _ t c p) = do
