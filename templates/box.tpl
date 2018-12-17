@@ -1,51 +1,83 @@
 <apply template="_base">
   <span id="boxref" data-ref="${box-ref}"/>
   <script>window.box_ref = document.getElementById("boxref").getAttribute("data-ref");</script>
-  <h3>
-    <not-editable><box-title/></not-editable>
-    <is-editable>
-      <form action="/${box-ref}/title">
-        <textarea name="title"><box-title/></textarea>
-        <button type="submit">Change Title</button>
-      </form>
-    </is-editable>
-  </h3>
-  <is-editable>
-    <div style="width: 50%; margin: 0 auto;">
-      Urls:<br/>
-      <ul>
-        <urls>
-          <li><a href="/${url}">/<url/></a> <a href="/${url-ref}/delete" onclick="return confirm('Are you sure?');">x</a> </li>
-        </urls>
-        <li>
-          <form action="/url/new">
-            <textarea name="url"></textarea>
-            <input type="hidden" name="ref" value="${box-ref}"/>
-            <button type="submit">New</button>
-          </form>
-        </li>
-      </ul>
-    </div>
-  </is-editable>
-  <ul>
+  <div class="row">
+      <not-editable>
+        <div class="col s12">
+          <h4><box-title/></h4>
+        </div>
+      </not-editable>
+      <is-editable>
+        <form class="col s6" action="/${box-ref}/title">
+          <div class="row no-marg-bot">
+            <div class="input-field col s7 pull-s5 no-marg-bot">
+              <label for="title">Title</label>
+              <input name="title" type="text" value="${box-title}"/>
+            </div>
+          </div>
+          <div class="row">
+            <div class="input-field col s5 pull-s7">
+              <button class="btn btn-small waves-effect waves-light" type="submit" name="action">Save
+                <i class="material-icons right">save</i>
+              </button>
+            </div>
+          </div>
+        </form>
+        <ul class="col s6 collection">
+          <urls>
+            <li class="collection-item"><a href="/${url}">/<url/></a> <a href="/${url-ref}/delete" class="secondary-content" onclick="return confirm('Are you sure?');"><i class="material-icons right">delete</i></a></li>
+          </urls>
+          <li class="collection-item">
+            <form action="/url/new" class="no-marg-bot">
+              <input type="hidden" name="ref" value="${box-ref}"/>
+              <div class="row no-marg-bot">
+                <div class="input-field col s7">
+                  <label for="url">Url</label>
+                  <input type="text" name="url"/>
+                </div>
+                <div class="input-field col s5">
+                  <button class="btn btn-small waves-effect waves-light" type="submit" name="action">New
+                    <i class="material-icons right">add</i>
+                  </button>
+                </div>
+              </div>
+            </form>
+          </li>
+        </ul>
+      </is-editable>
+  </div>
+
+  
+  <div class="row">
     <items>
-      <li class="file">
-        <a class="thumb gallery" href="/file/${contentRef}">
-          <has-thumbnail>
-            <img src="/static/icon.png" data-layzr="/${contentRef}/thumb"/>
-          </has-thumbnail>
+      <div class="col s3">
+        <div class="card">
+          <div class="card-image">
+            <a class="thumb gallery" href="/file/${contentRef}">
+              <has-thumbnail>
+                <img src="/static/icon.png" data-layzr="/${contentRef}/thumb"/>
+              </has-thumbnail>
+              <no-thumbnail>
+                <has-preview>
+                  <span class="card-title">No thumbnail</span>
+                </has-preview>
+              </no-thumbnail>
+            </a>
+          </div>
           <has-preview>
-            <div class="preview">
+            <div class="card-content">
               <p><preview/></p>
             </div>
           </has-preview>
-        </a>
-        <is-editable>
-          <a href="/${box-ref}/remove/${contentRef}" class="delete" onclick="return confirm('Are you sure?');">x</a>
-          <a href="/${box-ref}/preview/${contentRef}" class="preview">o</a>
-        </is-editable>
-      </li>
-    </items>
-  </ul>
+          <is-editable>
+            <div class="card-action">
+              <a href="/${box-ref}/remove/${contentRef}" onclick="return confirm('Are you sure?');"><i class="material-icons right">delete</i></a>
+              <a href="/${box-ref}/preview/${contentRef}"><i class="material-icons right">favorite</i></a>
+          </is-editable>
 
+            </div>
+        </div>
+      </div>
+    </items>
+  </div>
 </apply>

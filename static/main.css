@@ -1,107 +1,11 @@
-ul {
-    list-style-type: none;
-}
-
-li.file {
-    display: inline-block;
-    vertical-align: top;
-    padding: 10px;
-    margin: 10px;
-    background-color: #efefef;
-    position: relative;
-    width: 128px;
-    height: 128px;
-    box-shadow: 2px 2px 5px #ccc;
-    border: 2px solid #666;
-}
-
-li a.thumb {
-    display: block;
-    width: 128px;
-    height: 128px;
-    text-decoration: none;
-    overflow: hidden;
-}
-
-li a.thumb .preview p {
-    color: black;
-    font-size: 0.8em;
-    line-height: 1.5em;
-    padding-left: 1em;
-    text-indent: -1em;
-    margin: 0;
-}
-
-li a.info {
-    display: block;
-    width: 32px;
-    height: 32px;
-    background-image: url("/static/info.png");
-    background-size: 100%;
-    position: absolute;
-    top: -7px;
-    right: -7px;
-    z-index: 10;
-    border-radius: 16px;
-    background-color: white;
-    box-shadow: 2px 2px 5px #ccc;
-}
-
-li a.info:hover {
-    background-image: url("/static/info_b.png");
-    cursor: pointer;
-}
-
-li img {
-    display: block;
-    position: absolute;
-    bottom: 10px;
-    max-width: 128px;
-    max-height: 128px;
-}
-
-li a.delete {
-    position: absolute;
-    top: 1px;
-    right: 1px;
-    text-decoration: none;
-    display: block;
-    background-color: red;
-    padding: 3px;
-    padding-left: 5px;
-    padding-right: 5px;
-    color: white;
-    border-radius: 3px;
-}
-
-li a.preview {
-    position: absolute;
-    top: 1px;
-    left: 1px;
-    text-decoration: none;
-    display: block;
-    background-color: green;
-    padding: 3px;
-    padding-left: 5px;
-    padding-right: 5px;
-    color: white;
-    border-radius: 3px;
+.row {
+    display: flex;
+    flex-wrap: wrap;
 }
 
 
-li .new {
-    padding: 0;
-}
-
-li .new textarea {
-    width: 100%;
-    height: 40px;
-}
-li .new button {
-    color: black;
-    padding: 5px;
-    border: radius: 3px;
-    text-decoration: none;
+.no-marg-bot {
+    margin-bottom: 0;
 }
 
 .dropzone {
@@ -166,30 +70,8 @@ li .new button {
     animation: spinner 1.5s linear infinite;
 }
 
-.home {
-    position: absolute;
-    top: 15px;
-    left: 20px;
-    width: 100px;
-    height: 64px;
-    background-image: url("/static/logo.png");
-    background-size: contain;
-    background-position: left;
-    background-repeat: no-repeat;
-    display: block;
-    z-index: 100;
-}
 
-form {
-    padding: 20px 20%;
-    text-align: center;
-    position: relative;
-}
-form input {
-    font-size: 2em;
-    width: 90%;
-    text-align: center;
-}
+
 
 button.index {
     position: absolute;
@@ -225,38 +107,3 @@ a.wipe:hover {
     cursor: pointer;
 }
 
-
-h3 {
-    text-align: center;
-    margin: 0;
-}
-
-img.file {
-    max-width: 96%;
-    padding: 2%;
-    margin: 0 auto;
-    display: block;
-}
-
-.email {
-    font-weight: bold;
-    width: 80%;
-    margin: 10px auto;
-    line-height: 1.5em;
-}
-
-pre.blob {
-    max-width: 80%;
-    margin: 0 auto;
-    padding: 10px;
-    background-color: #efefef;
-    box-shadow: inset 0 0 5px #ccc;
-    overflow: scroll;
-}
-
-.footer {
-    font-size: 0.8em;
-    color: #ccc;
-    text-align: center;
-    padding-top; 10px;
-}

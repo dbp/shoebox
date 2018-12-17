@@ -189,9 +189,7 @@ indexH :: Ctxt -> Maybe Int -> IO (Maybe Response)
 indexH ctxt page = do
   is <- getItems (_db ctxt) (fromMaybe 0 page)
   renderWith ctxt
-    (L.subs [("has-more", L.fillChildren)
-            ,("next-page", L.textFill $ maybe "1" (T.pack . show . (+1)) page)
-            ,("items", L.mapSubs itemSubs is)
+    (L.subs [("items", L.mapSubs itemSubs is)
             ,("q", L.textFill "")])
     "index"
 
@@ -210,7 +208,7 @@ reindexH :: Ctxt -> IO (Maybe Response)
 reindexH ctxt = do
   forkIO $ do delete (_store ctxt)
               index (_store ctxt) (_db ctxt)
-  okText "OK."
+  redirectReferer ctxt
 
 wipeH :: Ctxt -> IO (Maybe Response)
 wipeH ctxt = do
