@@ -109,6 +109,7 @@ initializer = do
   pth' <- fmap T.pack <$> lookupEnv "BLOBS"
   s3' <- fmap T.pack <$> lookupEnv "S3"
   rds <- lookupEnv "REDIS"
+  rds_port <- fmap (read . fromMaybe "6379" ) $ lookupEnv "REDIS_PORT"
   rds_pass <- fmap (T.encodeUtf8 . T.pack) <$> lookupEnv "REDIS_AUTH"
   (store, pth) <- case (pth', s3') of
                     (Just pth'', _) -> return (SomeBlobServer (FileStore pth''), pth'')
@@ -118,7 +119,7 @@ initializer = do
                           ht <- H.new
                           return (SomeBlobServer (CachingMemoryStore ht (SomeBlobServer (S3Store (BucketName s3)))), "s3://" <> s3)
                         Just rds_url -> do
-                          rc <- Redis.checkedConnect Redis.defaultConnectInfo { Redis.connectHost = rds_url, Redis.connectAuth = rds_pass }
+                          rc <- Redis.checkedConnect Redis.defaultConnectInfo { Redis.connectHost = rds_url, Redis.connectAuth = rds_pass, Redis.connectPort = Redis.PortNumber rds_port }
                           return (SomeBlobServer (CachingRedisStore rc (SomeBlobServer (S3Store (BucketName s3)))), "s3+redis://" <> s3)
                     (_,_) -> do
                       ht <- H.new
