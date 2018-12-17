@@ -19,4 +19,3 @@ CREATE TABLE urls (
   ref TEXT,
   url_blob_ref TEXT
 );
-

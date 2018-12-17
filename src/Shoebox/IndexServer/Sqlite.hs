@@ -98,13 +98,13 @@ instance IndexServer SqliteIndexer where
                         execute conn "UPDATE redirs SET target = ? WHERE target = ?;" (t, from)) ts
 
   getUrls (SL conn) url =
-    fmap (map head) $ query conn "SELECT ref FROM urls WHERE url = ?" (Only url)
+    fmap (map head) $ query conn "SELECT R.target FROM urls as U join (SELECT src,target FROM redirs UNION SELECT ref as src,ref as target FROM urls) as R on R.src = U.ref WHERE url = ?" (Only url)
 
   setUrl (SL conn) url ref url_ref =
     void $ execute conn "INSERT INTO urls (ref,url,url_blob_ref) SELECT ?,?,? WHERE NOT EXISTS (SELECT 1 FROM urls WHERE ref = ? AND url = ?);" (ref, url, url_ref, ref, url)
 
   getWithUrl (SL conn) ref =
-    query conn "SELECT url_blob_ref,url FROM urls WHERE ref = ?" (Only ref)
+    query conn "SELECT U.url_blob_ref, U.url FROM urls as U join (SELECT src,target FROM redirs UNION SELECT ref as src,ref as target FROM urls) as R on R.src = U.ref WHERE R.target = ?" (Only ref)
 
   removeUrl (SL conn) sha =
     void $ execute conn "DELETE FROM urls where url_blob_ref = ?" (Only sha)
