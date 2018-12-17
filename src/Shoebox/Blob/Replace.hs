@@ -2,17 +2,17 @@
 module Shoebox.Blob.Replace where
 
 import           Data.Aeson
-import Data.Aeson.Types
-import Data.Time.Clock
-import Data.Text (Text)
-import Data.Monoid ((<>))
+import           Data.Aeson.Types
+import           Data.Monoid         ((<>))
+import           Data.Text           (Text)
+import           Data.Time.Clock
 
-import Shoebox.Types
-import Shoebox.BlobServer
-import Shoebox.IndexServer
+import           Shoebox.BlobServer
+import           Shoebox.IndexServer
+import           Shoebox.Types
 
-data ReplaceBlob = ReplaceBlob { oldRef :: SHA224
-                               , newRef :: SHA224
+data ReplaceBlob = ReplaceBlob { oldRef    :: SHA224
+                               , newRef    :: SHA224
                                , timestamp :: UTCTime
                                }
 
@@ -23,7 +23,7 @@ instance FromJSON ReplaceBlob where
                                            <*> v .: "newRef"
                                            <*> v .: "timestamp"
                                else fail "Not a replace")
-  parseJSON invalid    = typeMismatch "RelpaceBlob" invalid
+  parseJSON invalid    = typeMismatch "ReplaceBlob" invalid
 
 instance ToJSON ReplaceBlob where
   toJSON (ReplaceBlob old new time) = object ["version" .= (1 :: Int)

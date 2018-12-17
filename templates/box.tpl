@@ -10,6 +10,23 @@
       </form>
     </is-editable>
   </h3>
+  <is-editable>
+    <div style="width: 50%; margin: 0 auto;">
+      Urls:<br/>
+      <ul>
+        <urls>
+          <li><a href="/${url}">/<url/></a> <a href="/${url-ref}/delete" onclick="return confirm('Are you sure?');">x</a> </li>
+        </urls>
+        <li>
+          <form action="/url/new">
+            <textarea name="url"></textarea>
+            <input type="hidden" name="ref" value="${box-ref}"/>
+            <button type="submit">New</button>
+          </form>
+        </li>
+      </ul>
+    </div>
+  </is-editable>
   <ul>
     <items>
       <li class="file">

@@ -96,3 +96,15 @@ instance IndexServer SqliteIndexer where
         -- NOTE(dbp 2018-12-15): This means that we wanted A -> B, but B -> C1,C2,... already, so do A -> C1, A -> C2...
         mapM_ (\t -> do execute conn "INSERT INTO redirs (src,target) SELECT ?,? WHERE NOT EXISTS (SELECT 1 FROM redirs WHERE src = ? AND target = ?);" (from, t, from, t)
                         execute conn "UPDATE redirs SET target = ? WHERE target = ?;" (t, from)) ts
+
+  getUrls (SL conn) url =
+    fmap (map head) $ query conn "SELECT ref FROM urls WHERE url = ?" (Only url)
+
+  setUrl (SL conn) url ref url_ref =
+    void $ execute conn "INSERT INTO urls (ref,url,url_blob_ref) SELECT ?,?,? WHERE NOT EXISTS (SELECT 1 FROM urls WHERE ref = ? AND url = ?);" (ref, url, url_ref, ref, url)
+
+  getWithUrl (SL conn) ref =
+    query conn "SELECT url_blob_ref,url FROM urls WHERE ref = ?" (Only ref)
+
+  removeUrl (SL conn) sha =
+    void $ execute conn "DELETE FROM urls where url_blob_ref = ?" (Only sha)

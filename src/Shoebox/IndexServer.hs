@@ -26,6 +26,11 @@ class IndexServer a where
   getRedirections :: a -> SHA224 -> IO [SHA224]
   setRedirection :: a -> SHA224 -> SHA224 -> IO ()
 
+  getUrls :: a -> Text -> IO [SHA224]
+  setUrl :: a -> Text -> SHA224 -> SHA224 -> IO ()
+  getWithUrl :: a -> SHA224 -> IO [(SHA224, Text)]
+  removeUrl :: a -> SHA224 -> IO ()
+
 data SomeIndexServer = forall s. IndexServer s => SomeIndexServer s
 
 instance IndexServer SomeIndexServer where
@@ -43,3 +48,7 @@ instance IndexServer SomeIndexServer where
   getThumbnail (SomeIndexServer s) = getThumbnail s
   getRedirections (SomeIndexServer s) = getRedirections s
   setRedirection (SomeIndexServer s) = setRedirection s
+  getUrls (SomeIndexServer s) = getUrls s
+  setUrl (SomeIndexServer s) = setUrl s
+  getWithUrl (SomeIndexServer s) = getWithUrl s
+  removeUrl (SomeIndexServer s) = removeUrl s

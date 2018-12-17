@@ -3,11 +3,9 @@ module Shoebox.Blob.Box where
 
 import           Control.Monad            (void)
 import qualified Crypto.Hash              as Hash
-import           Crypto.Random            (getRandomBytes)
 import           Data.Aeson
 import           Data.Aeson.Encode.Pretty (encodePretty)
 import           Data.Aeson.Types
-import           Data.ByteArray           (convert)
 import           Data.ByteString          (ByteString)
 import qualified Data.ByteString.Builder  as Builder
 import qualified Data.ByteString.Lazy     as BL
@@ -49,11 +47,6 @@ instance ToJSON BoxBlob where
                                     ,"contents" .= c
                                     ,"preview" .= p]
 
-mkRandom :: IO Text
-mkRandom = do bytes <- getRandomBytes 32 :: IO ByteString
-              let digest = Hash.hash bytes :: Hash.Digest Hash.SHA1
-              return $ T.decodeUtf8 $ BL.toStrict $ Builder.toLazyByteString $ Builder.byteStringHex (convert digest)
-
 
 indexBlob :: SomeBlobServer -> SomeIndexServer -> SHA224 -> BoxBlob -> IO ()
 indexBlob store serv sha (BoxBlob _ title contents prev) = do
@@ -74,11 +67,16 @@ toHtml store serv renderWith (SHA224 sha) bs =
   case decode bs of
     Just (BoxBlob _ title contents _) -> do
       is <- fmap catMaybes $ mapM (getItem serv) contents
+      urls <- getWithUrl serv (SHA224 sha)
       renderWith (L.subs [("box-ref", L.textFill sha)
                          ,("box-title", L.textFill title)
+                         ,("urls", L.mapSubs urlSubs urls)
                          ,("items", L.mapSubs itemSubs is)])
         "box"
     _ -> return Nothing
+  where urlSubs (SHA224 urlsha, url) =
+          L.subs [("url-ref", L.textFill urlsha)
+                 ,("url", L.textFill url)]
 
 updateBox :: SomeBlobServer -> SomeIndexServer -> SHA224 -> BoxBlob -> IO ()
 updateBox store serv oldRef (BoxBlob _ t c p) = do

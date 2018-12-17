@@ -12,3 +12,11 @@ CREATE TABLE redirs (
   src TEXT,
   target TEXT
 );
+
+CREATE TABLE urls (
+  id INTEGER PRIMARY KEY,
+  url TEXT,
+  ref TEXT,
+  url_blob_ref TEXT
+);
+

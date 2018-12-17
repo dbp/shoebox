@@ -56,6 +56,7 @@ import qualified Shoebox.Blob.Box                 as Box
 import           Shoebox.Blob.Delete
 import qualified Shoebox.Blob.Email               as Email
 import qualified Shoebox.Blob.File                as File
+import qualified Shoebox.Blob.Url                 as Url
 import           Shoebox.BlobServer
 import           Shoebox.BlobServer.CachingMemory
 import           Shoebox.BlobServer.Directory
@@ -162,13 +163,7 @@ site ctxt = do
   route ctxt [ end // param "page" // editable ctxt ==> indexH
              , path "static" ==> staticServe "static"
              , path "new" // param "title" // editable ctxt ==> newBoxH
-             , segment // path "thumb" ==> thumbH
-             , segment // path "delete" // editable ctxt ==> deleteH
-             , segment // path "remove" // segment // editable ctxt ==> boxDeleteH
-             , segment // path "preview" // segment // editable ctxt ==> boxPreviewH
-             , segment // path "title" // param "title" // editable ctxt ==> boxTitleH
-             , segment ==> renderH
-             , segment ==> redirectH
+             , path "url" // path "new" // param "url" // param "ref" // editable ctxt ==> newUrlH
              , path "blob" // segment ==> blobH
              , path "file" // segment ==> \ctxt sha -> File.serve (_store ctxt) sha
              , path "raw" // segment ==> rawH
@@ -176,6 +171,14 @@ site ctxt = do
              , path "search" // param "q" // editable ctxt ==> searchH
              , path "reindex" ==> reindexH
              , path "wipe" ==> wipeH
+             , segment // path "thumb" ==> thumbH
+             , segment // path "delete" // editable ctxt ==> deleteH
+             , segment // path "remove" // segment // editable ctxt ==> boxDeleteH
+             , segment // path "preview" // segment // editable ctxt ==> boxPreviewH
+             , segment // path "title" // param "title" // editable ctxt ==> boxTitleH
+             , segment ==> urlH
+             , segment ==> renderH
+             , segment ==> redirectH
              ]
     `fallthrough` do r <- render ctxt "404"
                      case r of
@@ -217,6 +220,20 @@ wipeH ctxt = do
 mmsum :: (Monad f, MonadPlus m, Foldable t) => t (f (m a)) -> f (m a)
 mmsum = foldl (liftA2 mplus) (return mzero)
 
+
+newUrlH :: Ctxt -> Text -> SHA224 -> IO (Maybe Response)
+newUrlH ctxt url ref = do
+  rand <- mkRandom
+  let blob = Url.UrlBlob url ref rand
+  (SHA224 ref) <- writeBlob (_store ctxt) (BL.toStrict $ encodePretty blob)
+  Url.indexBlob (_store ctxt) (_db ctxt) (SHA224 ref) blob
+  redirectReferer ctxt
+
+urlH :: Ctxt -> Text -> IO (Maybe Response)
+urlH ctxt url = do
+  targets <- getUrls (_db ctxt) url
+  landingH ctxt targets
+
 renderH :: Ctxt -> SHA224 -> IO (Maybe Response)
 renderH ctxt sha = do
   res' <- readBlob (_store ctxt) sha
@@ -234,7 +251,7 @@ renderH ctxt sha = do
 
 newBoxH :: Ctxt -> Text -> IO (Maybe Response)
 newBoxH ctxt title = do
-  rand <- Box.mkRandom
+  rand <- mkRandom
   let box = Box.BoxBlob rand title [] Nothing
   (SHA224 ref) <- writeBlob (_store ctxt) (BL.toStrict $ encodePretty box)
   Box.indexBlob (_store ctxt) (_db ctxt) (SHA224 ref) box
@@ -334,12 +351,16 @@ uploadH ctxt boxRef f = do
 
 redirectH :: Ctxt -> SHA224 -> IO (Maybe Response)
 redirectH ctxt sha = do red <- getRedirections (_db ctxt) sha
-                        is <- fmap catMaybes $ mapM (getItem (_db ctxt)) red
-                        case is of
-                          [(Item (SHA224 target) _ _)] -> redirect ("/" <> target)
-                          [] -> return Nothing
-                          is -> do
-                            renderWith ctxt (L.subs [("has-more", L.textFill "")
-                                                    ,("q", L.textFill "")
-                                                    ,("items", L.mapSubs itemSubs is)])
-                                       "index"
+                        landingH ctxt red
+
+landingH :: Ctxt -> [SHA224] -> IO (Maybe Response)
+landingH ctxt targets = do
+  is <- fmap catMaybes $ mapM (getItem (_db ctxt)) targets
+  case is of
+    [(Item (SHA224 target) _ _)] -> redirect ("/" <> target)
+    [] -> return Nothing
+    is -> do
+      renderWith ctxt (L.subs [("has-more", L.textFill "")
+                              ,("q", L.textFill "")
+                              ,("items", L.mapSubs itemSubs is)])
+        "index"

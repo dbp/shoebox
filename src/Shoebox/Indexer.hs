@@ -12,9 +12,11 @@ import           Data.Monoid          ((<>))
 import qualified Data.Text            as T
 
 import qualified Shoebox.Blob.Box     as Box
+import qualified Shoebox.Blob.Delete  as Delete
 import qualified Shoebox.Blob.Email   as Email
 import qualified Shoebox.Blob.File    as File
 import qualified Shoebox.Blob.Replace as Replace
+import qualified Shoebox.Blob.Url     as Url
 import           Shoebox.BlobServer
 import           Shoebox.Images
 import           Shoebox.IndexServer
@@ -30,12 +32,14 @@ decoders st se sha d =
   ,Box.indexBlob st se sha <$> decode d
   ,Email.indexBlob st se sha <$> decode d
   ,Replace.indexBlob st se sha <$> decode d
+  ,Url.indexBlob st se sha <$> decode d
+  ,Delete.indexBlob st se sha <$> decode d
   ]
 
 index :: SomeBlobServer -> SomeIndexServer -> IO ()
 index a s = do
   enumerateBlobs a $ \sha dat -> do
-    log' $ "INDEX" <> T.pack (show sha)
+    log' $ "INDEX " <> T.pack (show sha)
     case msum $ decoders a s sha dat of
       Just a  -> a
       Nothing -> return ()

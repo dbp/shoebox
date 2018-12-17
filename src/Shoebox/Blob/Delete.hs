@@ -2,13 +2,15 @@
 module Shoebox.Blob.Delete where
 
 import           Data.Aeson
-import Data.Aeson.Types
-import Data.Time.Clock
-import Data.Text (Text)
+import           Data.Aeson.Types
+import           Data.Text           (Text)
+import           Data.Time.Clock
 
-import Shoebox.Types
+import           Shoebox.BlobServer
+import           Shoebox.IndexServer
+import           Shoebox.Types
 
-data DeleteBlob = DeleteBlob { blobRef :: SHA224
+data DeleteBlob = DeleteBlob { blobRef   :: SHA224
                              , timestamp :: UTCTime
                              }
 
@@ -25,3 +27,10 @@ instance ToJSON DeleteBlob where
                                         ,"type" .= ("delete" :: Text)
                                         ,"blobRef" .= ref
                                         ,"timestamp" .= time]
+
+
+indexBlob :: SomeBlobServer -> SomeIndexServer -> SHA224 -> DeleteBlob -> IO ()
+indexBlob store serv sha (DeleteBlob ref _) = do
+  -- NOTE(dbp 2018-12-16): These are safe even if the targets aren't the correct type.
+  removeUrl serv ref
+  removeItem serv ref
