@@ -30,6 +30,7 @@ import qualified Data.Text                        as T
 import qualified Data.Text.Encoding               as T
 import           Data.Time.Clock
 import qualified Database.PostgreSQL.Simple       as PG
+import qualified Database.Redis                   as Redis
 import qualified Database.SQLite.Simple           as SQLITE
 import           GHC.IO.Encoding                  (setLocaleEncoding, utf8)
 import qualified HTMLEntities.Text                as HE
@@ -60,6 +61,7 @@ import qualified Shoebox.Blob.File                as File
 import qualified Shoebox.Blob.Url                 as Url
 import           Shoebox.BlobServer
 import           Shoebox.BlobServer.CachingMemory
+import           Shoebox.BlobServer.CachingRedis
 import           Shoebox.BlobServer.Directory
 import           Shoebox.BlobServer.Memory
 import           Shoebox.BlobServer.S3
@@ -106,11 +108,18 @@ initializer = do
   lib <- L.loadTemplates "templates" L.defaultOverrides
   pth' <- fmap T.pack <$> lookupEnv "BLOBS"
   s3' <- fmap T.pack <$> lookupEnv "S3"
+  rds <- lookupEnv "REDIS"
+  rds_pass <- fmap (T.encodeUtf8 . T.pack) <$> lookupEnv "REDIS_AUTH"
   (store, pth) <- case (pth', s3') of
                     (Just pth'', _) -> return (SomeBlobServer (FileStore pth''), pth'')
                     (Nothing, Just s3) -> do
-                      ht <- H.new
-                      return (SomeBlobServer (CachingMemoryStore ht (SomeBlobServer (S3Store (BucketName s3)))), "s3://" <> s3)
+                      case rds of
+                        Nothing -> do
+                          ht <- H.new
+                          return (SomeBlobServer (CachingMemoryStore ht (SomeBlobServer (S3Store (BucketName s3)))), "s3://" <> s3)
+                        Just rds_url -> do
+                          rc <- Redis.checkedConnect Redis.defaultConnectInfo { Redis.connectHost = rds_url, Redis.connectAuth = rds_pass }
+                          return (SomeBlobServer (CachingRedisStore rc (SomeBlobServer (S3Store (BucketName s3)))), "s3+redis://" <> s3)
                     (_,_) -> do
                       ht <- H.new
                       return (SomeBlobServer (MemoryStore ht), ":memory:")

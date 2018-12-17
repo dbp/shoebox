@@ -21,6 +21,7 @@ library
                      , Shoebox.BlobServer.Memory
                      , Shoebox.BlobServer.S3
                      , Shoebox.BlobServer.CachingMemory
+                     , Shoebox.BlobServer.CachingRedis
                      , Shoebox.Indexer
                      , Shoebox.Images
                      , Shoebox.Importer
@@ -79,6 +80,7 @@ library
                      , lens
                      , conduit
                      , resourcet
+                     , hedis
   default-language:    Haskell2010
 
 executable shoebox
@@ -112,6 +114,7 @@ executable shoebox
                      , dotenv
                      , directory
                      , amazonka-s3
+                     , hedis
   default-language:    Haskell2010
 
 executable shoebox-sync
