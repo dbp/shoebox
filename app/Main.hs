@@ -31,6 +31,7 @@ import qualified Data.Text.Encoding               as T
 import           Data.Time.Clock
 import qualified Database.PostgreSQL.Simple       as PG
 import qualified Database.SQLite.Simple           as SQLITE
+import           GHC.IO.Encoding                  (setLocaleEncoding, utf8)
 import qualified HTMLEntities.Text                as HE
 import           Magic                            (MagicFlag (MagicMimeType),
                                                    magicCString,
@@ -140,7 +141,8 @@ initializer = do
 
 main :: IO ()
 main = withStderrLogging $
-  do de <- doesFileExist ".env"
+  do setLocaleEncoding utf8
+     de <- doesFileExist ".env"
      when de $ loadFile False ".env"
      ctxt <- initializer
      rb_token <- lookupEnv "ROLLBAR_ACCESS_TOKEN"
