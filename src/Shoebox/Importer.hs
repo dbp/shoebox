@@ -26,15 +26,18 @@ import           System.IO                  (hClose)
 import           System.IO.Temp             (withTempFile)
 import           Web.Fn                     (File (..))
 
-import qualified Shoebox.Blob.Email            as Email
-import qualified Shoebox.Blob.File             as File
+import qualified Shoebox.Blob.Email         as Email
+import qualified Shoebox.Blob.File          as File
 import           Shoebox.BlobServer
 import           Shoebox.Indexer
 import           Shoebox.IndexServer
 import           Shoebox.Types
 
 isBoringFile :: File -> Bool
-isBoringFile f = "__MACOSX" `T.isPrefixOf` fileName f || ".DS_STORE" == fileName f
+isBoringFile f = isBoring (fileName f)
+
+isBoring :: T.Text -> Bool
+isBoring s = "__MACOSX" `T.isPrefixOf` s || ".DS_STORE" == s
 
 importers :: [SomeBlobServer -> SomeIndexServer -> Maybe SHA224 -> File -> (File -> IO ()) -> IO ()]
 importers =
@@ -65,4 +68,4 @@ unzipper store serv box f p =
                           B.hPut hFile (BL.toStrict bs)
                           hClose hFile
                           p (File (T.pack n) (T.pack mime) tmpFile))
-          names
+          (filter (not.isBoring.T.pack) names)
