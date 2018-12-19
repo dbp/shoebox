@@ -78,6 +78,14 @@ indexBlob store serv sha (FileBlob name parts) = do
   setSearchHigh serv sha name
   builder <- readFileBytes store parts
   let dat = BL.toStrict $ Builder.toLazyByteString builder
+  has_med <- getMedium serv sha
+  case has_med of
+    Nothing -> do med <- createMedium dat
+                  case med of
+                    Nothing  -> return ()
+                    Just jpg ->
+                      setMedium serv sha (BL.toStrict jpg)
+    Just _ -> return ()
   res <- getExifThumbnail dat
   case res of
     Nothing  ->

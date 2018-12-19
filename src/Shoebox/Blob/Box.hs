@@ -84,7 +84,7 @@ toHtml store serv renderWith (SHA224 sha) bs =
   where urlSubs (SHA224 urlsha, url) =
           L.subs [("url-ref", L.textFill urlsha)
                  ,("url", L.textFill url)]
-        prevSubs (Item (SHA224 ref) _ _) = L.subs [("ref", L.textFill ref)]
+        prevSubs (Item (SHA224 ref) _ _ _) = L.subs [("ref", L.textFill ref)]
 
 updateBox :: SomeBlobServer -> SomeIndexServer -> SHA224 -> BoxBlob -> IO ()
 updateBox store serv oldRef (BoxBlob _ t c p) = do

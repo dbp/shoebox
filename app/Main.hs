@@ -184,6 +184,7 @@ site ctxt = do
              , path "reindex" ==> reindexH
              , path "wipe" ==> wipeH
              , segment // path "thumb" ==> thumbH
+             , segment // path "medium" ==> mediumH
              , segment // path "delete" // editable ctxt ==> deleteH
              , segment // path "remove" // segment // editable ctxt ==> boxDeleteH
              , segment // path "preview" // segment // editable ctxt ==> boxPreviewH
@@ -301,6 +302,13 @@ thumbH ctxt sha =
        Nothing -> renderIcon
        Just jpg -> return $ Just $ responseBuilder status200 [(hContentType, "image/jpeg")] (Builder.fromByteString jpg)
 
+mediumH :: Ctxt -> SHA224 -> IO (Maybe Response)
+mediumH ctxt sha =
+  do res <- getMedium (_db ctxt) sha
+     case res of
+       Nothing -> return Nothing
+       Just jpg -> return $ Just $ responseBuilder status200 [(hContentType, "image/jpeg")] (Builder.fromByteString jpg)
+
 deleteH :: Ctxt -> SHA224 -> IO (Maybe Response)
 deleteH ctxt sha =
   do now <- getCurrentTime
@@ -367,7 +375,7 @@ landingH :: Ctxt -> [SHA224] -> IO (Maybe Response)
 landingH ctxt targets = do
   is <- fmap catMaybes $ mapM (getItem (_db ctxt)) targets
   case is of
-    [(Item (SHA224 target) _ _)] -> redirect ("/" <> target)
+    [(Item (SHA224 target) _ _ _)] -> redirect ("/" <> target)
     [] -> return Nothing
     is -> do
       renderWith ctxt (L.subs [("has-more", L.textFill "")

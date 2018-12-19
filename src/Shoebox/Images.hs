@@ -49,7 +49,13 @@ getExifThumbnail jpg = (C.withPtr $ \str -> C.withPtr $ \size -> [C.block|
      return Nothing
 
 createThumbnail :: ByteString -> IO (Maybe BL.ByteString)
-createThumbnail bs =
+createThumbnail = createSized 128
+
+createMedium :: ByteString -> IO (Maybe BL.ByteString)
+createMedium = createSized 1024
+
+createSized :: Int -> ByteString -> IO (Maybe BL.ByteString)
+createSized size bs =
   case decodeImage bs of
     Left _    -> return Nothing
     Right img' ->
@@ -57,7 +63,7 @@ createThumbnail bs =
          let ht = imageHeight img
          let wd = imageWidth img
          let (wd', ht') = if ht >= wd then
-                           ((128 * wd) `div` ht, 128)
+                           ((size * wd) `div` ht, size)
                          else
-                           (128, (128 * ht) `div` wd)
-         return $ Just $ imageToJpg 75 $ ImageRGB8 $ scaleBilinear wd' ht' img
+                           (size, (size * ht) `div` wd)
+         return $ Just $ imageToJpg 95 $ ImageRGB8 $ scaleBilinear wd' ht' img

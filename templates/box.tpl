@@ -66,7 +66,7 @@
       <div class="col s3">
         <div class="card hoverable">
           <div class="card-image">
-            <a class="thumb gallery" href="/file/${contentRef}">
+            <a class="thumb gallery" href="/${contentRef}/medium">
               <has-thumbnail>
                 <img src="/static/icon.png" data-layzr="/${contentRef}/thumb"/>
               </has-thumbnail>

@@ -14,6 +14,7 @@ class IndexServer a where
   setSearchHigh :: a -> SHA224 -> Text -> IO ()
   setSearchLow :: a -> SHA224 -> Text -> IO ()
   setThumbnail :: a -> SHA224 -> ByteString -> IO ()
+  setMedium :: a -> SHA224 -> ByteString -> IO ()
   setPreview :: a -> SHA224 -> Text -> IO ()
 
   showInRoot :: a -> SHA224 -> IO ()
@@ -22,6 +23,7 @@ class IndexServer a where
   getItems :: a -> Int -> IO [Item]
   search :: a -> Text -> IO [Item]
   getThumbnail :: a -> SHA224 -> IO (Maybe ByteString)
+  getMedium :: a -> SHA224 -> IO (Maybe ByteString)
 
   getRedirections :: a -> SHA224 -> IO [SHA224]
   setRedirection :: a -> SHA224 -> SHA224 -> IO ()
@@ -40,12 +42,14 @@ instance IndexServer SomeIndexServer where
   setSearchHigh (SomeIndexServer s) = setSearchHigh s
   setSearchLow (SomeIndexServer s) = setSearchLow s
   setThumbnail (SomeIndexServer s) = setThumbnail s
+  setMedium (SomeIndexServer s) = setMedium s
   setPreview (SomeIndexServer s) = setPreview s
   showInRoot (SomeIndexServer s) = showInRoot s
   getItem (SomeIndexServer s) = getItem s
   getItems (SomeIndexServer s) = getItems s
   search (SomeIndexServer s) = search s
   getThumbnail (SomeIndexServer s) = getThumbnail s
+  getMedium (SomeIndexServer s) = getMedium s
   getRedirections (SomeIndexServer s) = getRedirections s
   setRedirection (SomeIndexServer s) = setRedirection s
   getUrls (SomeIndexServer s) = getUrls s

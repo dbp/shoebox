@@ -1,19 +1,21 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Shoebox.Items where
 
-import Web.Larceny (Substitutions)
-import qualified Web.Larceny as L
-import qualified HTMLEntities.Text           as HE
-import qualified Data.Text as T
-import Data.Maybe (isJust)
+import           Data.Maybe        (isJust)
+import qualified Data.Text         as T
+import qualified HTMLEntities.Text as HE
+import           Web.Larceny       (Substitutions)
+import qualified Web.Larceny       as L
 
-import Shoebox.Types
+import           Shoebox.Types
 
 itemSubs :: Item -> Substitutions ()
-itemSubs (Item (SHA224 sha) thumb prev) =
+itemSubs (Item (SHA224 sha) thumb med prev) =
   L.subs [("contentRef", L.textFill sha)
          ,("has-thumbnail", justFill thumb)
          ,("no-thumbnail", nothingFill thumb)
+         ,("has-medium", justFill med)
+         ,("no-medium", nothingFill med)
          ,("has-preview", justFill prev)
          ,("preview", L.rawTextFill $ maybe "" (T.replace "\n" "</p><p>" . HE.text) prev)]
   where

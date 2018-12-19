@@ -31,6 +31,7 @@ instance FromRow Item where
   fromRow = Item <$> field
                  <*> field
                  <*> field
+                 <*> field
 
 
 instance IndexServer PostgresIndexer where
@@ -53,20 +54,31 @@ instance IndexServer PostgresIndexer where
   setThumbnail (PG conn) sha jpg =
      void $ execute conn "UPDATE items SET thumbnail = ? WHERE blob_ref = ?" (Binary jpg, sha)
 
+  setMedium (PG conn) sha jpg =
+     void $ execute conn "UPDATE items SET medium = ? WHERE blob_ref = ?" (Binary jpg, sha)
+
   setPreview (PG conn) sha prev =
     void $ execute conn "UPDATE items SET preview = ? WHERE blob_ref = ?" (prev, sha)
 
   showInRoot (PG conn) sha =
     void $ execute conn "UPDATE items SET show_in_root = true where blob_ref = ?" (Only sha)
 
-  getItem (PG conn) (SHA224 sha) = listToMaybe <$> query conn "SELECT blob_ref, thumbnail, preview FROM items WHERE blob_ref = ?" (Only sha)
+  getItem (PG conn) (SHA224 sha) = listToMaybe <$> query conn "SELECT blob_ref, thumbnail, medium, preview FROM items WHERE blob_ref = ?" (Only sha)
 
-  getItems (PG conn) page = query conn "SELECT blob_ref,  thumbnail, preview FROM items WHERE show_in_root = true ORDER BY blob_ref DESC LIMIT 100 OFFSET ?" (Only (100 * page))
+  getItems (PG conn) page = query conn "SELECT blob_ref,  thumbnail, medium, preview FROM items WHERE show_in_root = true ORDER BY blob_ref DESC LIMIT 100 OFFSET ?" (Only (100 * page))
 
-  search (PG conn) t = query conn "SELECT blob_ref, thumbnail, preview FROM items WHERE (setweight(to_tsvector(items.search_high),'A') || setweight(to_tsvector(items.search_low), 'B')) @@ to_tsquery('english', ?) ORDER BY ts_rank((setweight(to_tsvector(items.search_high),'A') || setweight(to_tsvector(items.search_low), 'B')), to_tsquery('english', ?)) DESC" (t,t)
+  search (PG conn) t = query conn "SELECT blob_ref, thumbnail, medium, preview FROM items WHERE (setweight(to_tsvector(items.search_high),'A') || setweight(to_tsvector(items.search_low), 'B')) @@ to_tsquery('english', ?) ORDER BY ts_rank((setweight(to_tsvector(items.search_high),'A') || setweight(to_tsvector(items.search_low), 'B')), to_tsquery('english', ?)) DESC" (t,t)
 
   getThumbnail (PG conn) (SHA224 sha) =
     do res <- listToMaybe <$> query conn "SELECT thumbnail FROM items WHERE blob_ref = ?" (Only sha)
+       case res of
+         Nothing                         -> return Nothing
+         Just (Only Nothing)             -> return Nothing
+         Just (Only (Just (Binary jpg))) -> return (Just jpg)
+
+
+  getMedium (PG conn) (SHA224 sha) =
+    do res <- listToMaybe <$> query conn "SELECT medium FROM items WHERE blob_ref = ?" (Only sha)
        case res of
          Nothing                         -> return Nothing
          Just (Only Nothing)             -> return Nothing
