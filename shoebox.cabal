@@ -81,6 +81,7 @@ library
                      , conduit
                      , resourcet
                      , hedis
+                     , lifted-base
   default-language:    Haskell2010
 
 executable shoebox

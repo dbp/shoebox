@@ -3,6 +3,7 @@
 module Shoebox.BlobServer.S3 where
 
 import           Control.Exception            (SomeException, catch)
+import qualified Control.Exception.Lifted     as Lifted (SomeException, catch)
 import           Control.Lens                 (each, view, (&), (.~))
 import           Control.Logging              (log')
 import           Control.Monad                (void)
@@ -67,13 +68,14 @@ instance BlobServer S3Store where
      void $ runResourceT $ iterateAllRefs bucket env lgr Nothing iterateResponse
    where iterateResponse :: Env -> Logger -> [SHA224] -> ResourceT IO ()
          iterateResponse env lgr refs =
-           mapM_ (\(SHA224 ref) -> do
+           mapM_ (\(SHA224 ref) -> Lifted.catch (do
              (RsBody body) <- runAWS (env & envLogger .~ lgr) $
                                 within NorthVirginia $ do
                                  rs <- send (getObject bucket (ObjectKey ref))
                                  return (view gorsBody rs)
              b <- body $$+- sinkLbs
              liftIO $ f (SHA224 ref) b)
+                 (\(e :: SomeException) -> return ()))
            refs
 
  deleteBlob (S3Store bucket) (SHA224 t) = do
