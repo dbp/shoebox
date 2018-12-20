@@ -243,7 +243,7 @@ newUrlH ctxt url ref = do
 urlH :: Ctxt -> Text -> IO (Maybe Response)
 urlH ctxt url = do
   targets <- getUrls (_db ctxt) url
-  landingH ctxt targets
+  landingH ("/" <> url) ctxt targets
 
 renderH :: Ctxt -> SHA224 -> IO (Maybe Response)
 renderH ctxt sha = do
@@ -369,16 +369,17 @@ uploadH ctxt boxRef f = do
 
 redirectH :: Ctxt -> SHA224 -> IO (Maybe Response)
 redirectH ctxt sha = do red <- getRedirections (_db ctxt) sha
-                        landingH ctxt red
+                        landingH ("/" <> unSHA224 sha) ctxt red
 
-landingH :: Ctxt -> [SHA224] -> IO (Maybe Response)
-landingH ctxt targets = do
+landingH :: Text -> Ctxt -> [SHA224] -> IO (Maybe Response)
+landingH url ctxt targets = do
   is <- fmap catMaybes $ mapM (getItem (_db ctxt)) targets
   case is of
     [(Item (SHA224 target) _ _ _)] -> redirect ("/" <> target)
     [] -> return Nothing
     is -> do
-      renderWith ctxt (L.subs [("has-more", L.textFill "")
+      renderWith ctxt (L.subs [("url", L.textFill url)
+                              ,("has-more", L.textFill "")
                               ,("q", L.textFill "")
                               ,("items", L.mapSubs itemSubs is)])
-        "index"
+        "landing"
