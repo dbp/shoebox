@@ -130,6 +130,7 @@ executable shoebox-sync
                      , amazonka-s3
                      , containers
                      , bytestring
+                     , wreq
 
   
 test-suite shoebox-test

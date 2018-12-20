@@ -3,7 +3,7 @@ module Main where
 
 import           Configuration.Dotenv
 import           Control.Logging
-import           Control.Monad                (when)
+import           Control.Monad                (void, when)
 import qualified Data.ByteString.Lazy         as BL
 import           Data.Maybe                   (fromJust, isNothing)
 import           Data.Monoid                  ((<>))
@@ -11,6 +11,8 @@ import           Data.Set                     (Set)
 import qualified Data.Set                     as Set
 import qualified Data.Text                    as T
 import           Network.AWS.S3               (BucketName (..))
+import           Network.Wreq
+import qualified Network.Wreq.Session         as Sess
 import           System.Directory             (doesFileExist)
 import           System.Environment           (lookupEnv)
 
@@ -20,7 +22,7 @@ import qualified Shoebox.BlobServer.S3        as S3
 import           Shoebox.Types
 
 main :: IO ()
-main = withStderrLogging $ do
+main = withStderrLogging $ Sess.withSession $ \sess -> do
   de <- doesFileExist ".env"
   when de $ loadFile False ".env"
 
@@ -30,6 +32,14 @@ main = withStderrLogging $ do
   pth' <- fmap T.pack <$> lookupEnv "BLOBS"
   when (isNothing pth') $ error "BLOBS environment var must be set to directory of local blobs"
   let pth = fromJust pth'
+
+  serv <- fmap T.pack <$> lookupEnv "SERVER"
+
+  let foreignIndex =
+        case serv of
+          Nothing -> \_ -> return ()
+          Just url ->
+            \sha -> void $ Sess.get sess (T.unpack $ url <> "/" <> (unSHA224 sha) <> "/reindex")
 
   let s3store = S3.S3Store (BucketName s3)
   s3refs' <- S3.getAllBlobRefs s3store
@@ -41,12 +51,13 @@ main = withStderrLogging $ do
   let fors3 = Set.difference dirrefs s3refs
   let fordir = Set.difference s3refs dirrefs
 
-  mapM (\sha -> do log' $ "[s3://" <> s3 <> " --> " <> pth <> "] " <> unSHA224 sha
+  mapM (\sha -> do log' $ "[" <> pth <> " --> s3://" <> s3 <> "] " <> unSHA224 sha
                    Just bdy <- readBlob dirstore sha
-                   writeBlob s3store (BL.toStrict bdy))
+                   writeBlob s3store (BL.toStrict bdy)
+                   foreignIndex sha)
     (Set.toList fors3)
 
-  mapM (\sha -> do log' $ "[" <> pth <> " --> s3://" <> s3 <> "] " <> unSHA224 sha
+  mapM (\sha -> do log' $ "[s3://" <> s3 <> " --> " <> pth <> "] " <> unSHA224 sha
                    Just bdy <- readBlob s3store sha
                    writeBlob dirstore (BL.toStrict bdy))
     (Set.toList fordir)

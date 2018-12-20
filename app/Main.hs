@@ -55,7 +55,7 @@ import           Web.Heroku                       (parseDatabaseUrl)
 import qualified Web.Larceny                      as L
 
 import qualified Shoebox.Blob.Box                 as Box
-import           Shoebox.Blob.Delete
+import qualified Shoebox.Blob.Delete              as Delete
 import qualified Shoebox.Blob.Email               as Email
 import qualified Shoebox.Blob.File                as File
 import qualified Shoebox.Blob.Url                 as Url
@@ -189,6 +189,7 @@ site ctxt = do
              , segment // path "remove" // segment // editable ctxt ==> boxDeleteH
              , segment // path "preview" // segment // editable ctxt ==> boxPreviewH
              , segment // path "title" // param "title" // editable ctxt ==> boxTitleH
+             , segment // path "reindex" ==> reindexBlobH
              , segment ==> urlH
              , segment ==> renderH
              , segment ==> redirectH
@@ -313,7 +314,7 @@ deleteH :: Ctxt -> SHA224 -> IO (Maybe Response)
 deleteH ctxt sha =
   do now <- getCurrentTime
      shas <- findConnectedBlobs (_store ctxt) sha
-     mapM (\s -> writeBlob (_store ctxt) (BL.toStrict $ encodePretty (DeleteBlob s now))) shas
+     mapM (\s -> writeBlob (_store ctxt) (BL.toStrict $ encodePretty (Delete.DeleteBlob s now))) shas
      delete (_store ctxt)
      wipe (_db ctxt)
      index (_store ctxt) (_db ctxt)
@@ -332,6 +333,13 @@ boxDeleteH ctxt boxSha eltSha =
                  redirectReferer ctxt
          else redirectReferer ctxt
 
+reindexBlobH :: Ctxt -> SHA224 -> IO (Maybe Response)
+reindexBlobH ctxt ref =
+  do b <- readBlob (_store ctxt) ref
+     case b of
+       Nothing -> return Nothing
+       Just dat -> do indexBlob (_store ctxt) (_db ctxt) ref dat
+                      okText "OK"
 
 boxPreviewH :: Ctxt -> SHA224 -> SHA224 -> IO (Maybe Response)
 boxPreviewH ctxt boxSha preview =

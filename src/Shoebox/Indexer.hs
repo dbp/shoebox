@@ -36,11 +36,13 @@ decoders st se sha d =
   ,Delete.indexBlob st se sha <$> decode d
   ]
 
+indexBlob :: SomeBlobServer -> SomeIndexServer -> SHA224 -> BL.ByteString -> IO ()
+indexBlob a s sha dat =
+  case msum $ decoders a s sha dat of
+    Just a  -> a
+    Nothing -> return ()
+
 index :: SomeBlobServer -> SomeIndexServer -> IO ()
 index a s = do
-  enumerateBlobs a $ \sha dat -> do
-    log' $ "INDEX " <> T.pack (show sha)
-    case msum $ decoders a s sha dat of
-      Just a  -> a
-      Nothing -> return ()
+  enumerateBlobs a (indexBlob a s)
 
