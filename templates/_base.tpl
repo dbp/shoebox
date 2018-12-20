@@ -9,7 +9,13 @@
   </head>
   <body>
     <div style="visibility:hidden; opacity:0" class="dropzone">
-      <ul class="queue"></ul>
+      <div class="queue" style="visibility: hidden;">
+        <ul class="collection">
+          <div class="progress">
+            <div class="indeterminate"></div>
+          </div>
+        </ul>
+      </div>
     </div>
     <nav class="light-blue lighten-1" role="navigation">
       <div class="nav-wrapper container"><a id="logo-container" href="/" class="brand-logo">Shoebox</a>

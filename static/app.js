@@ -32,7 +32,7 @@ window.addEventListener("drop", function(e) {
     e.preventDefault();
     e.stopPropagation();
 
-    document.querySelector(".dropzone").classList.add("spinner");
+    document.querySelector(".dropzone .queue").style.visibility = "";
 
     // NOTE(dbp 2017-05-29): Async on readEntries() and file() make what should
     // be very simple (just get all the files, then upload them one by one) much
@@ -93,8 +93,9 @@ window.addEventListener("drop", function(e) {
         } else {
             uploadQueue.forEach(function (f) {
                 var e = document.createElement("li");
+                e.classList.add("collection-item");
                 e.innerHTML = f.name;
-                document.querySelector(".dropzone .queue").appendChild(e);
+                document.querySelector(".dropzone .collection").appendChild(e);
             });
             upload();
         }
@@ -113,7 +114,7 @@ window.addEventListener("drop", function(e) {
             request.open('POST', '/upload', true);
             request.onreadystatechange = function() { // ASYNC
 	              if (request.readyState > 3 && request.status === 200) {
-                    document.querySelectorAll(".dropzone .queue li").forEach(function (e) {
+                    document.querySelectorAll(".dropzone .collection li").forEach(function (e) {
                         if (e.innerHTML === f.name) {
                             e.classList.add("done");
                             window.setTimeout(function () {

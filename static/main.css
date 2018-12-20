@@ -36,78 +36,9 @@
     overflow: hidden;
     margin-left: -100px;
     padding: 0;
-    border-radius: 5px;
-    background-color: #efefef;
 }
 
-.dropzone .queue li {
-    color: #999;
-    font-size: 1.1em;
-    padding: 10px;
-    text-align: center;
-}
-.dropzone .queue li.done {
-    color: #07d;
-}
-
-@keyframes spinner {
-    to {transform: rotate(360deg);}
-}
-
-.spinner:before {
-    content: '';
-    box-sizing: border-box;
-    position: absolute;
-    top: 25%;
-    left: 50%;
-    width: 50px;
-    height: 50px;
-    margin-top: -25px;
-    margin-left: -25px;
-    border-radius: 50%;
-    border: 3px solid #ccc;
-    border-top-color: #07d;
-    animation: spinner .6s linear infinite;
-}
-
-.spin {
-    animation: spinner 1.5s linear infinite;
-}
-
-
-
-
-button.index {
-    position: absolute;
-    right: 60px;
-    top: 20px;
-    height: 32px;
-    width: 32px;
-    background-size: 100%;
-    background-image: url("/static/refresh.png");
-    border: 0;
-    background-color: transparent;
-}
-
-button.index:hover {
-    background-image: url("/static/refresh_b.png");
-    cursor: pointer;
-}
-
-a.wipe {
-    position: absolute;
-    right: 20px;
-    top: 20px;
-    height: 32px;
-    width: 32px;
-    background-size: 100%;
-    background-image: url("/static/delete.png");
-    border: 0;
-    background-color: transparent;
-}
-
-a.wipe:hover {
-    background-image: url("/static/delete_b.png");
-    cursor: pointer;
+.dropzone .queue .progress {
+    margin: 0;
 }
 
