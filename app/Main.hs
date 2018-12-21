@@ -172,7 +172,7 @@ editable ctxt req = return $ if _edit ctxt then Just (req, id) else Nothing
 site :: Ctxt -> IO Response
 site ctxt = do
   log' $ T.decodeUtf8 (requestMethod (fst $ _req ctxt)) <> " " <> T.decodeUtf8 (rawPathInfo (fst $ _req ctxt))
-  route ctxt [ end // param "page" // editable ctxt ==> indexH
+  route ctxt [ end // param "page" ==> indexH
              , path "static" ==> staticServe "static"
              , path "new" // param "title" // editable ctxt ==> newBoxH
              , path "url" // path "new" // param "url" // param "ref" // editable ctxt ==> newUrlH
@@ -201,7 +201,7 @@ site ctxt = do
 
 indexH :: Ctxt -> Maybe Int -> IO (Maybe Response)
 indexH ctxt page = do
-  is <- getItems (_db ctxt) (fromMaybe 0 page)
+  is <- if _edit ctxt then getItems (_db ctxt) (fromMaybe 0 page) else return []
   renderWith ctxt
     (L.subs [("items", L.mapSubs itemSubs is)
             ,("q", L.textFill "")])
