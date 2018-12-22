@@ -58,6 +58,8 @@ import qualified Shoebox.Blob.Box                 as Box
 import qualified Shoebox.Blob.Delete              as Delete
 import qualified Shoebox.Blob.Email               as Email
 import qualified Shoebox.Blob.File                as File
+import qualified Shoebox.Blob.Note                as Note
+import qualified Shoebox.Blob.Replace             as Replace
 import qualified Shoebox.Blob.Url                 as Url
 import           Shoebox.BlobServer
 import           Shoebox.BlobServer.CachingMemory
@@ -190,6 +192,7 @@ site ctxt = do
              , segment // path "preview" // segment // editable ctxt ==> boxPreviewH
              , segment // path "title" // param "title" // editable ctxt ==> boxTitleH
              , segment // path "reindex" ==> reindexBlobH
+             , segment // path "notes" // param "content" // editable ctxt !=> notesH
              , segment ==> urlH
              , segment ==> renderH
              , segment ==> redirectH
@@ -203,7 +206,7 @@ indexH :: Ctxt -> Maybe Int -> IO (Maybe Response)
 indexH ctxt page = do
   is <- if _edit ctxt then getItems (_db ctxt) (fromMaybe 0 page) else return []
   renderWith ctxt
-    (L.subs [("items", L.mapSubs itemSubs is)
+    (L.subs [("items", L.mapSubs (itemSubs (_db ctxt)) is)
             ,("q", L.textFill "")])
     "index"
 
@@ -215,7 +218,7 @@ searchH ctxt q = do
       renderWith ctxt
         (L.subs [("has-more", L.textFill "")
                 ,("q", L.textFill q)
-                ,("items", L.mapSubs itemSubs is)])
+                ,("items", L.mapSubs (itemSubs (_db ctxt)) is)])
         "index"
 
 reindexH :: Ctxt -> IO (Maybe Response)
@@ -364,6 +367,21 @@ boxTitleH ctxt boxSha title =
          else do Box.updateBox (_store ctxt) (_db ctxt) boxSha (Box.BoxBlob r title contents p)
                  redirectReferer ctxt
 
+notesH :: Ctxt -> SHA224 -> Text -> IO (Maybe Response)
+notesH ctxt ref content =
+  do ns <- getNotes (_db ctxt) ref
+     rand <- mkRandom
+     let blob = Note.NoteBlob ref content rand
+     note_ref <- writeBlob (_store ctxt) (BL.toStrict $ encodePretty blob)
+     now <- getCurrentTime
+     case ns of
+       [] -> return ()
+       _ -> mapM_ (\(ref,_) -> do let rep = Replace.ReplaceBlob ref note_ref now
+                                  rep_ref <- writeBlob (_store ctxt) (BL.toStrict $ encodePretty rep)
+                                  Replace.indexBlob (_store ctxt) (_db ctxt) rep_ref rep) ns
+     Note.indexBlob (_store ctxt) (_db ctxt) note_ref blob
+     okText "OK."
+
 
 uploadH :: Ctxt -> Maybe SHA224 -> File -> IO (Maybe Response)
 uploadH ctxt boxRef f = do
@@ -389,5 +407,5 @@ landingH url ctxt targets = do
       renderWith ctxt (L.subs [("url", L.textFill url)
                               ,("has-more", L.textFill "")
                               ,("q", L.textFill "")
-                              ,("items", L.mapSubs itemSubs is)])
+                              ,("items", L.mapSubs (itemSubs (_db ctxt)) is)])
         "landing"

@@ -75,7 +75,7 @@ toHtml store serv renderWith (SHA224 sha) bs =
       renderWith (L.subs [("box-ref", L.textFill sha)
                          ,("box-title", L.textFill title)
                          ,("urls", L.mapSubs urlSubs urls)
-                         ,("items", L.mapSubs itemSubs is)
+                         ,("items", L.mapSubs (itemSubs serv) is)
                          ,("has-preview", if isJust prev then L.fillChildren else L.textFill "")
                          ,("no-preview", if isNothing prev then L.fillChildren else L.textFill "")
                          ,("preview", if isJust prev then L.fillChildrenWith (prevSubs (fromJust prev)) else L.textFill "")])

@@ -33,6 +33,10 @@ class IndexServer a where
   getWithUrl :: a -> SHA224 -> IO [(SHA224, Text)]
   removeUrl :: a -> SHA224 -> IO ()
 
+  setNote :: a -> Text -> SHA224 -> SHA224 -> IO ()
+  removeNote :: a -> SHA224 -> IO ()
+  getNotes :: a -> SHA224 -> IO [(SHA224, Text)]
+
 data SomeIndexServer = forall s. IndexServer s => SomeIndexServer s
 
 instance IndexServer SomeIndexServer where
@@ -56,3 +60,6 @@ instance IndexServer SomeIndexServer where
   setUrl (SomeIndexServer s) = setUrl s
   getWithUrl (SomeIndexServer s) = getWithUrl s
   removeUrl (SomeIndexServer s) = removeUrl s
+  setNote (SomeIndexServer s) = setNote s
+  removeNote (SomeIndexServer s) = removeNote s
+  getNotes (SomeIndexServer s) = getNotes s

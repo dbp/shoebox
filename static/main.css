@@ -42,3 +42,10 @@
     margin: 0;
 }
 
+.btn.no-marg {
+    padding: 0;
+}
+
+.btn.no-marg i {
+    margin: 0;
+}

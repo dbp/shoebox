@@ -50,3 +50,12 @@ There are a few fundamental differences:
    stuff that is inside zip files, so there is some possible other uses for
    shoebox as a way of exploring data, but this is all sort of in the future. 
    
+## Dependencies
+
+On a Debian-like system, these are what the packages needed are called.
+
+```
+imagemagick-dev
+libmagic-dev
+libexif-dev
+```

@@ -35,3 +35,5 @@ instance ToJSON ReplaceBlob where
 indexBlob :: SomeBlobServer -> SomeIndexServer -> SHA224 -> ReplaceBlob -> IO ()
 indexBlob store serv sha (ReplaceBlob old new _) = do
   setRedirection serv old new
+  -- NOTE(dbp 2018-12-21): this may be a no-op, in case we aren't replacing a NoteBlob.
+  removeNote serv old

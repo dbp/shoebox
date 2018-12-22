@@ -15,6 +15,7 @@ import qualified Shoebox.Blob.Box     as Box
 import qualified Shoebox.Blob.Delete  as Delete
 import qualified Shoebox.Blob.Email   as Email
 import qualified Shoebox.Blob.File    as File
+import qualified Shoebox.Blob.Note    as Note
 import qualified Shoebox.Blob.Replace as Replace
 import qualified Shoebox.Blob.Url     as Url
 import           Shoebox.BlobServer
@@ -34,6 +35,7 @@ decoders st se sha d =
   ,Replace.indexBlob st se sha <$> decode d
   ,Url.indexBlob st se sha <$> decode d
   ,Delete.indexBlob st se sha <$> decode d
+  ,Note.indexBlob st se sha <$> decode d
   ]
 
 indexBlob :: SomeBlobServer -> SomeIndexServer -> SHA224 -> BL.ByteString -> IO ()

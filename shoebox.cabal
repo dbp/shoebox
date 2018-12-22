@@ -34,6 +34,7 @@ library
                      , Shoebox.Blob.Replace
                      , Shoebox.Blob.Box
                      , Shoebox.Blob.Url
+                     , Shoebox.Blob.Note
                      , Shoebox.Items
                      , Shoebox.Util
                      , Shoebox.Deletion

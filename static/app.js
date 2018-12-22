@@ -6,6 +6,30 @@ if (typeof window.box_ref !== "null") {
     new LuminousGallery(document.querySelectorAll(".gallery"), {arrowNavigation: true});
 }
 
+// Handle notes ajax forms
+window.onload = function () {
+    document.querySelectorAll("form.notes").forEach(function (form) {
+        var button = form.querySelector("button");
+        button.onclick = function() {
+            var req = new XMLHttpRequest();
+            var dat = new FormData();
+            dat.append("content", form.querySelector("textarea").value);
+            req.open('post', form.getAttribute("action"));
+            req.onreadystatechange = function(){
+                if (req.readyState == XMLHttpRequest.DONE && req.status == 200 ) {
+                    // NOTE(dbp 2018-12-22): This is a pretty bogus way of showing it worked, but... meh.
+                    button.querySelector("i").innerText = "check";
+                }
+            };
+            req.send(dat);
+            button.querySelector("i").innerText = "cached";
+        };
+        form.onsubmit = function() {
+            return false;
+        };
+    });
+};
+
 /* lastTarget is set first on dragenter, then
    compared with during dragleave. */
 var lastTarget = null;

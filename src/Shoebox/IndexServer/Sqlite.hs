@@ -118,3 +118,12 @@ instance IndexServer SqliteIndexer where
 
   removeUrl (SL conn) sha =
     void $ execute conn "DELETE FROM urls where url_blob_ref = ?" (Only sha)
+
+  setNote (SL conn) content ref note_ref =
+    void $ execute conn "INSERT INTO notes (content, ref, note_blob_ref) SELECT ?,?,? WHERE NOT EXISTS (SELECT 1 FROM notes WHERE note_blob_ref = ?);" (content, ref, note_ref, note_ref)
+
+  removeNote (SL conn) note_ref =
+    void $ execute conn "DELETE FROM notes where note_blob_ref = ?" (Only note_ref)
+
+  getNotes (SL conn) sha =
+    query conn "SELECT note_blob_ref,content FROM notes WHERE ref = ?" (Only sha)

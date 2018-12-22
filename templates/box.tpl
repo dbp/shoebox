@@ -77,11 +77,20 @@
               </no-thumbnail>
             </a>
           </div>
-          <has-preview>
-            <div class="card-content">
-              <p><preview/></p>
-            </div>
-          </has-preview>
+          <div class="card-content">
+            <form class="notes no-marg-bot" action="/${contentRef}/notes">
+              <div class="row no-marg-bot">
+                <div class="input-field col s10 no-marg-bot">
+                  <textarea class="materialize-textarea" name="content"><notes/></textarea>
+                </div>
+                <div class="input-field col s2 no-marg-bot">
+                  <button class="btn btn-small waves-effect waves-light no-marg" type="submit" name="action">
+                    <i class="material-icons right">save</i>
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
           <is-editable>
             <div class="card-action">
               <a href="/${box-ref}/remove/${contentRef}" onclick="return confirm('Are you sure?');"><i class="material-icons right">delete</i></a>

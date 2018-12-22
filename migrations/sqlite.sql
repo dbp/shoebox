@@ -20,3 +20,10 @@ CREATE TABLE urls (
   ref TEXT,
   url_blob_ref TEXT
 );
+
+CREATE TABLE notes (
+  id INTEGER PRIMARY KEY,
+  content TEXT,
+  ref TEXT,
+  note_blob_ref TEXT
+);
