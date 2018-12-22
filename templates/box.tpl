@@ -8,7 +8,7 @@
         </div>
       </not-editable>
       <is-editable>
-        <form class="col s6" action="/${box-ref}/title">
+        <form method="post" class="col s6" action="/${box-ref}/title">
           <div class="row no-marg-bot">
             <div class="col s7">
               <div class="row no-marg-bot">
@@ -41,7 +41,7 @@
             <li class="collection-item"><a href="/${url}">/<url/></a> <a href="/${url-ref}/delete" class="secondary-content" onclick="return confirm('Are you sure?');"><i class="material-icons right">delete</i></a></li>
           </urls>
           <li class="collection-item">
-            <form action="/url/new" class="no-marg-bot">
+            <form method="post" action="/url/new" class="no-marg-bot">
               <input type="hidden" name="ref" value="${box-ref}"/>
               <div class="row no-marg-bot">
                 <div class="input-field col s7">
@@ -78,7 +78,7 @@
             </a>
           </div>
           <div class="card-content">
-            <form class="notes no-marg-bot" action="/${contentRef}/notes">
+            <form method="post" class="notes no-marg-bot" action="/${contentRef}/notes">
               <div class="row no-marg-bot">
                 <div class="input-field col s10 no-marg-bot">
                   <textarea class="materialize-textarea" name="content"><notes/></textarea>

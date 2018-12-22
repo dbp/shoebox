@@ -176,8 +176,8 @@ site ctxt = do
   log' $ T.decodeUtf8 (requestMethod (fst $ _req ctxt)) <> " " <> T.decodeUtf8 (rawPathInfo (fst $ _req ctxt))
   route ctxt [ end // param "page" ==> indexH
              , path "static" ==> staticServe "static"
-             , path "new" // param "title" // editable ctxt ==> newBoxH
-             , path "url" // path "new" // param "url" // param "ref" // editable ctxt ==> newUrlH
+             , path "new" // param "title" // editable ctxt !=> newBoxH
+             , path "url" // path "new" // param "url" // param "ref" // editable ctxt !=> newUrlH
              , path "blob" // segment ==> blobH
              , path "file" // segment ==> \ctxt sha -> File.serve (_store ctxt) sha
              , path "raw" // segment ==> rawH
@@ -190,7 +190,7 @@ site ctxt = do
              , segment // path "delete" // editable ctxt ==> deleteH
              , segment // path "remove" // segment // editable ctxt ==> boxDeleteH
              , segment // path "preview" // segment // editable ctxt ==> boxPreviewH
-             , segment // path "title" // param "title" // editable ctxt ==> boxTitleH
+             , segment // path "title" // param "title" // editable ctxt !=> boxTitleH
              , segment // path "reindex" ==> reindexBlobH
              , segment // path "notes" // param "content" // editable ctxt !=> notesH
              , segment ==> urlH

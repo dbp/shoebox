@@ -34,7 +34,7 @@
         <div class="card hoverable">
           <div class="card-content">
             <div class="row no-marg-bot">
-              <form action="/new" class="col s12 no-marg-bot">
+              <form method="post" action="/new" class="col s12 no-marg-bot">
                 <div class="row no-marg-bot">
                   <div class="input-field col s12">
                     <input placeholder="Title" id="title" name="title" type="text" class="validate">
