@@ -401,7 +401,7 @@ landingH :: Text -> Ctxt -> [SHA224] -> IO (Maybe Response)
 landingH url ctxt targets = do
   is <- fmap catMaybes $ mapM (getItem (_db ctxt)) targets
   case is of
-    [(Item (SHA224 target) _ _ _)] -> redirect ("/" <> target)
+    [(Item (SHA224 target) _ _)] -> redirect ("/" <> target)
     [] -> return Nothing
     is -> do
       renderWith ctxt (L.subs [("url", L.textFill url)

@@ -29,7 +29,6 @@ instance ToJSON SHA224 where
 
 data Item = Item { blob_ref  :: SHA224
                  , thumbnail :: Maybe ByteString
-                 , medium    :: Maybe ByteString
                  , preview   :: Maybe Text
                  } deriving Show
 

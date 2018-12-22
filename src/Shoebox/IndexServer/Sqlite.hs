@@ -39,7 +39,6 @@ instance FromRow Item where
   fromRow = Item <$> field
                  <*> field
                  <*> field
-                 <*> field
 
 
 instance ToField Value where
@@ -74,11 +73,11 @@ instance IndexServer SqliteIndexer where
   showInRoot (SL conn) sha =
     void $ execute conn "UPDATE items SET show_in_root = 1 where blob_ref = ?" (Only sha)
 
-  getItem (SL conn) (SHA224 sha) = listToMaybe <$> query conn "SELECT blob_ref, thumbnail, medium, preview FROM items WHERE blob_ref = ?" (Only sha)
+  getItem (SL conn) (SHA224 sha) = listToMaybe <$> query conn "SELECT blob_ref, thumbnail, preview FROM items WHERE blob_ref = ?" (Only sha)
 
-  getItems (SL conn) page = query conn "SELECT blob_ref, thumbnail, medium, preview FROM items WHERE show_in_root = 1 ORDER BY blob_ref DESC LIMIT 100 OFFSET ?" (Only (100 * page))
+  getItems (SL conn) page = query conn "SELECT blob_ref, thumbnail, preview FROM items WHERE show_in_root = 1 ORDER BY blob_ref DESC LIMIT 100 OFFSET ?" (Only (100 * page))
 
-  search (SL conn) t = query conn "SELECT blob_ref, thumbnail, medium, preview FROM items WHERE search_high LIKE ? OR search_low LIKE ?" ("%"<>t<>"%","%"<>t<>"%")
+  search (SL conn) t = query conn "SELECT blob_ref, thumbnail, preview FROM items WHERE search_high LIKE ? OR search_low LIKE ?" ("%"<>t<>"%","%"<>t<>"%")
 
   getThumbnail (SL conn) (SHA224 sha) =
     do res <- listToMaybe <$> query conn "SELECT thumbnail FROM items WHERE blob_ref = ?" (Only sha)

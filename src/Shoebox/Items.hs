@@ -12,12 +12,10 @@ import           Shoebox.IndexServer
 import           Shoebox.Types
 
 itemSubs :: SomeIndexServer -> Item -> Substitutions ()
-itemSubs serv (Item (SHA224 sha) thumb med prev) =
+itemSubs serv (Item (SHA224 sha) thumb prev) =
   L.subs [("contentRef", L.textFill sha)
          ,("has-thumbnail", justFill thumb)
          ,("no-thumbnail", nothingFill thumb)
-         ,("has-medium", justFill med)
-         ,("no-medium", nothingFill med)
          ,("has-preview", justFill prev)
          ,("preview", L.rawTextFill $ maybe "" (T.replace "\n" "</p><p>" . HE.text) prev)
          ,("notes", L.textFill' $ do notes <- liftIO $ getNotes serv (SHA224 sha)
