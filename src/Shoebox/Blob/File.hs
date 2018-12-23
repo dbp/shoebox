@@ -86,23 +86,27 @@ indexBlob store serv sha (FileBlob name parts) = do
                     Just jpg ->
                       setMedium serv sha (BL.toStrict jpg)
     Just _ -> return ()
-  res <- getExifThumbnail dat
-  case res of
-    Nothing  ->
-      do m <- magicOpen [MagicMimeType]
-         magicLoadDefault m
-         mime <- unsafeUseAsCStringLen dat (magicCString m)
-         let mkThumb = do
-              thm <- createThumbnail dat
-              case thm of
-                Nothing  -> return ()
-                Just jpg ->
-                  setThumbnail serv sha (BL.toStrict jpg)
-         case mime of
-           "image/jpeg" -> mkThumb
-           "image/png"  -> mkThumb
-           _            -> return ()
-    Just jpg -> setThumbnail serv sha jpg
+  has_thumb <- getThumbnail serv sha
+  case has_thumb of
+    Nothing -> do
+      res <- getExifThumbnail dat
+      case res of
+        Nothing  ->
+          do m <- magicOpen [MagicMimeType]
+             magicLoadDefault m
+             mime <- unsafeUseAsCStringLen dat (magicCString m)
+             let mkThumb = do
+                  thm <- createThumbnail dat
+                  case thm of
+                    Nothing  -> return ()
+                    Just jpg ->
+                      setThumbnail serv sha (BL.toStrict jpg)
+             case mime of
+               "image/jpeg" -> mkThumb
+               "image/png"  -> mkThumb
+               _            -> return ()
+        Just jpg -> setThumbnail serv sha jpg
+    Just _ -> return ()
 
 recognizeBlob :: SomeBlobServer -> SomeIndexServer -> Maybe SHA224 -> File -> (File -> IO ()) -> IO ()
 recognizeBlob store serv box file recognize =
