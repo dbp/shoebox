@@ -78,18 +78,23 @@
             </a>
           </div>
           <div class="card-content">
-            <form method="post" class="notes no-marg-bot" action="/${contentRef}/notes">
-              <div class="row no-marg-bot">
-                <div class="input-field col s10 no-marg-bot">
-                  <textarea class="materialize-textarea" name="content"><notes/></textarea>
+            <is-editable>
+              <form method="post" class="notes no-marg-bot" action="/${contentRef}/notes">
+                <div class="row no-marg-bot">
+                  <div class="input-field col s10 no-marg-bot">
+                    <textarea class="materialize-textarea" name="content"><notes/></textarea>
+                  </div>
+                  <div class="input-field col s2 no-marg-bot">
+                    <button class="btn btn-small waves-effect waves-light no-marg" type="submit" name="action">
+                      <i class="material-icons right">save</i>
+                    </button>
+                  </div>
                 </div>
-                <div class="input-field col s2 no-marg-bot">
-                  <button class="btn btn-small waves-effect waves-light no-marg" type="submit" name="action">
-                    <i class="material-icons right">save</i>
-                  </button>
-                </div>
-              </div>
-            </form>
+              </form>
+            </is-editable>
+            <not-editable>
+              <p><notes/></p>
+            </not-editable>
           </div>
           <is-editable>
             <div class="card-action">
