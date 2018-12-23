@@ -49,7 +49,7 @@ getExifThumbnail jpg = (C.withPtr $ \str -> C.withPtr $ \size -> [C.block|
      return Nothing
 
 createThumbnail :: ByteString -> IO (Maybe BL.ByteString)
-createThumbnail = createSized 128
+createThumbnail = createSized 256
 
 createMedium :: ByteString -> IO (Maybe BL.ByteString)
 createMedium = createSized 1024
