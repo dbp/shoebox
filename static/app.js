@@ -3,7 +3,7 @@ window.layzr = new Layzr();
 
 // Lightbox galleries
 if (typeof window.box_ref !== "null") {
-    new LuminousGallery(document.querySelectorAll(".gallery"), {arrowNavigation: true});
+    new LuminousGallery(document.querySelectorAll(".gallery"), {arrowNavigation: true}, {caption: function(e) { return e.getAttribute("alt"); }});
 }
 
 // Handle notes ajax forms
