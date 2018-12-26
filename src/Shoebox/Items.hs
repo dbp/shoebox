@@ -18,6 +18,10 @@ itemSubs serv (Item (SHA224 sha) thumb prev) =
          ,("no-thumbnail", nothingFill thumb)
          ,("has-preview", justFill prev)
          ,("preview", L.rawTextFill $ maybe "" (T.replace "\n" "</p><p>" . HE.text) prev)
+         ,("search-high", L.textFill' $ do txt <- liftIO $ getSearchHigh serv (SHA224 sha)
+                                           case txt of
+                                             Nothing -> return ""
+                                             Just t  -> return t)
          ,("notes", L.textFill' $ do notes <- liftIO $ getNotes serv (SHA224 sha)
                                      case notes of
                                        [] -> return ""

@@ -98,11 +98,14 @@
           </div>
           <is-editable>
             <div class="card-action">
+              <div class="row no-marg-bot">
               <a href="/${box-ref}/remove/${contentRef}" onclick="return confirm('Are you sure?');"><i class="material-icons right">delete</i></a>
               <a href="/${box-ref}/preview/${contentRef}"><i class="material-icons right">favorite</i></a>
+              <a href="/file/${contentRef}" download="${search-high}"><i class="material-icons right">get_app</i></a>
+              </div>
+            </div>
           </is-editable>
 
-            </div>
         </div>
       </div>
     </items>

@@ -49,3 +49,11 @@
 .btn.no-marg i {
     margin: 0;
 }
+
+.card-action i.right {
+    margin-left: 0;
+}
+
+.card-action a {
+    margin-right: 0px !important;
+}

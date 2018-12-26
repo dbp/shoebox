@@ -58,6 +58,12 @@ instance IndexServer SqliteIndexer where
   setSearchHigh (SL conn) (SHA224 sha) text =
     void $ execute conn "UPDATE items SET search_high = ? WHERE blob_ref = ?" (text, sha)
 
+  getSearchHigh (SL conn) (SHA224 sha) =
+    do res <- listToMaybe <$> query conn "SELECT search_high FROM items WHERE blob_ref = ?" (Only sha)
+       case res of
+         Nothing         -> return Nothing
+         Just (Only res) -> return res
+
   setSearchLow (SL conn) (SHA224 sha) text =
     void $ execute conn "UPDATE items SET search_low = ? WHERE blob_ref = ?" (text, sha)
 

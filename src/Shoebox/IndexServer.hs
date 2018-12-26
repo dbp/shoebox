@@ -12,6 +12,7 @@ class IndexServer a where
   makeItem :: a -> SHA224 -> IO ()
   removeItem :: a -> SHA224 -> IO ()
   setSearchHigh :: a -> SHA224 -> Text -> IO ()
+  getSearchHigh :: a -> SHA224 -> IO (Maybe Text)
   setSearchLow :: a -> SHA224 -> Text -> IO ()
   setThumbnail :: a -> SHA224 -> ByteString -> IO ()
   setMedium :: a -> SHA224 -> ByteString -> IO ()
@@ -44,6 +45,7 @@ instance IndexServer SomeIndexServer where
   makeItem (SomeIndexServer s) = makeItem s
   removeItem (SomeIndexServer s) = removeItem s
   setSearchHigh (SomeIndexServer s) = setSearchHigh s
+  getSearchHigh (SomeIndexServer s) = getSearchHigh s
   setSearchLow (SomeIndexServer s) = setSearchLow s
   setThumbnail (SomeIndexServer s) = setThumbnail s
   setMedium (SomeIndexServer s) = setMedium s
