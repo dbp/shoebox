@@ -37,14 +37,15 @@ import qualified HTMLEntities.Text                as HE
 import           Magic                            (MagicFlag (MagicMimeType),
                                                    magicCString,
                                                    magicLoadDefault, magicOpen)
-import           Network.AWS.S3.Types             (BucketName (..))
+import qualified Aws.S3 as S3
 import           Network.HTTP.Types               (hContentType)
 import           Network.HTTP.Types.Status        (status200)
 import           Network.Wai                      (Response, rawPathInfo,
                                                    requestMethod,
                                                    responseBuilder, responseLBS)
-import           Network.Wai.Handler.Warp         (runEnv)
-import           Network.Wai.Middleware.Rollbar
+import           Network.Wai.Handler.Warp         (runSettings, setOnException, setPort, defaultSettings)
+import           Rollbar.Wai
+import qualified Rollbar.Client as Rollbar
 import           System.Directory                 (doesFileExist)
 import           System.Environment               (lookupEnv)
 import           System.FilePath                  (takeExtension)
@@ -119,10 +120,10 @@ initializer = do
                       case rds of
                         Nothing -> do
                           ht <- H.new
-                          return (SomeBlobServer (CachingMemoryStore ht (SomeBlobServer (S3Store (BucketName s3)))), "s3://" <> s3)
+                          return (SomeBlobServer (CachingMemoryStore ht (SomeBlobServer (S3Store s3))), "s3://" <> s3)
                         Just rds_url -> do
                           rc <- Redis.checkedConnect Redis.defaultConnectInfo { Redis.connectHost = rds_url, Redis.connectAuth = rds_pass, Redis.connectPort = Redis.PortNumber rds_port }
-                          return (SomeBlobServer (CachingRedisStore rc (SomeBlobServer (S3Store (BucketName s3)))), "s3+redis://" <> s3)
+                          return (SomeBlobServer (CachingRedisStore rc (SomeBlobServer (S3Store s3))), "s3+redis://" <> s3)
                     (_,_) -> do
                       ht <- H.new
                       return (SomeBlobServer (MemoryStore ht), ":memory:")
@@ -155,13 +156,15 @@ main :: IO ()
 main = withStderrLogging $
   do setLocaleEncoding utf8
      de <- doesFileExist ".env"
-     when de $ loadFile False ".env"
+     when de $ loadFile defaultConfig
      ctxt <- initializer
      rb_token <- lookupEnv "ROLLBAR_ACCESS_TOKEN"
      let rb = case rb_token of
              Nothing -> id
-             Just tok -> exceptions (Settings (fromString tok) "production" :: Settings '[])
-     runEnv 3000 $ rb $ toWAI ctxt site
+             Just tok -> setOnException (rollbarOnException (Rollbar.Settings (Rollbar.Token (fromString tok)) (Rollbar.Environment "production") Nothing Rollbar.defaultRequestModifiers))
+     runSettings
+       (setPort 3000 $ rb defaultSettings)
+       $ toWAI ctxt site
 
 instance FromParam SHA224 where
   fromParam [x] | "sha224-" `T.isPrefixOf` x = Right $ SHA224 x

@@ -1,15 +1,14 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE OverloadedStrings         #-}
+{-# LANGUAGE PackageImports         #-}
 module Shoebox.BlobServer where
 
-import qualified Crypto.Hash             as Hash
+import qualified "crypton" Crypto.Hash             as Hash
 import           Data.ByteArray          (convert)
 import           Data.ByteString         (ByteString)
-import qualified Data.ByteString         as BS
 import qualified Data.ByteString.Builder as Builder
 import qualified Data.ByteString.Lazy    as BL
 import           Data.Maybe              (isJust)
-import           Data.Monoid
 import qualified Data.Text.Encoding      as T
 
 import           Shoebox.Types

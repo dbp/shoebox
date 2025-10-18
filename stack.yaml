@@ -1,15 +1,22 @@
-resolver: lts-9.21
+resolver: lts-24.15
+allow-newer: true
 packages:
 - '.'
-- location:
-    git: https://github.com/positiondev/larceny.git
-    commit: 48dfe03dafff5eb82da3ea270e89f9bfc7291c86
-  extra-dep: true
-- location:
-    git: https://github.com/dbp/zip-conduit.git
-    commit: 098ba00ae02ae3a55a2b918327623e6f6e19d478
-  extra-dep: true
+- mbox
+- heroku
+- zip-conduit
 extra-deps:
+- git: https://github.com/positiondev/larceny.git
+  commit: 494dcf620577f96bc797f1ba7f75d9053079c12f
 - html-entities-1.1.4.2
-- logging-3.0.5
-- heroku-0.1.2.3
+- logging-3.0.6
+- rollbar-wai-1.1.0@sha256:e0573a78bc5ce83fb920c4c418b1bff1f3bfb3c43e604adb96d825e14ad934dc,2607
+- rollbar-client-1.1.0@sha256:5e0d2cb2270e36becd37575914b9dc47ba184bf47d0124f3c2a55a264a0eb0b6,2590
+- dotenv-0.11.0.2@sha256:5f1ff6ca49afe7a598051ac34ba67ab7d946ff722a3725f5e03b530b18510f87,4629
+- wai-middleware-rollbar-0.11.0@sha256:d6cc20c654affe88de50db482134b3864ec8d8f7eaf15f8967b3759054c8681d,1727
+extra-lib-dirs:
+- /opt/homebrew/Cellar/libmagic/5.46/lib
+- /opt/homebrew/Cellar/libexif/0.6.25/lib
+extra-include-dirs:
+- /opt/homebrew/Cellar/libmagic/5.46/include
+- /opt/homebrew/Cellar/libexif/0.6.25/include

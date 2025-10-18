@@ -34,7 +34,7 @@ type Header = (T.Text, T.Text)
 parseDateHeader :: T.Text -> Maybe UTCTime
 parseDateHeader txt = listToMaybe . catMaybes $ map tryParse formats where
   header = T.unpack txt
-  tryParse f = parseTime LC.defaultTimeLocale f header
+  tryParse f = parseTimeM False LC.defaultTimeLocale f header
   formats =
     [ "%a, %_d %b %Y %T %z"
     , "%a, %_d %b %Y %T %Z"

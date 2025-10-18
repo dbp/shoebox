@@ -1,16 +1,14 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, PackageImports #-}
 module Shoebox.Types where
 
-import qualified Crypto.Hash             as Hash
-import           Crypto.Random           (getRandomBytes)
+import qualified "crypton" Crypto.Hash             as Hash
+import "crypton" Crypto.Random           (getRandomBytes)
 import           Data.Aeson.Types        (FromJSON (..), ToJSON (..),
                                           Value (..), typeMismatch)
 import           Data.ByteArray          (convert)
 import           Data.ByteString         (ByteString)
-import           Data.ByteString         (ByteString)
 import qualified Data.ByteString.Builder as Builder
 import qualified Data.ByteString.Lazy    as BL
-import qualified Data.Map                as M
 import           Data.Text               (Text)
 import qualified Data.Text               as T
 import qualified Data.Text.Encoding      as T

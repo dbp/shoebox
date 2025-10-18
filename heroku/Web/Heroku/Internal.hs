@@ -5,7 +5,7 @@ module Web.Heroku.Internal (
 
 import System.Environment
 import Network.URI
-import Data.Text
+import Data.Text hiding (show)
 import Prelude
 
 -- | read the DATABASE_URL environment variable

@@ -1,4 +1,3 @@
-
 -----------------------------------------------------------------------------
 {- |
 Module      :  Data.MBox
@@ -31,7 +30,7 @@ type Header = (String, String)
 -- | Reads a date header as a UTCTime
 parseDateHeader :: String -> Maybe UTCTime
 parseDateHeader header = listToMaybe . catMaybes $ map tryParse formats where
-  tryParse f = parseTime LC.defaultTimeLocale f header
+  tryParse f = parseTimeM False LC.defaultTimeLocale f header
   formats =
     [ "%a, %_d %b %Y %T %z"
     , "%a, %_d %b %Y %T %Z"

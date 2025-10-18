@@ -10,7 +10,7 @@ import           Data.Monoid                  ((<>))
 import           Data.Set                     (Set)
 import qualified Data.Set                     as Set
 import qualified Data.Text                    as T
-import           Network.AWS.S3               (BucketName (..))
+import qualified Aws.S3 as S3
 import           Network.Wreq
 import qualified Network.Wreq.Session         as Sess
 import           System.Directory             (doesFileExist)
@@ -24,7 +24,7 @@ import           Shoebox.Types
 main :: IO ()
 main = withStderrLogging $ Sess.withSession $ \sess -> do
   de <- doesFileExist ".env"
-  when de $ loadFile False ".env"
+  when de $ loadFile defaultConfig
 
   s3' <- fmap T.pack <$> lookupEnv "S3"
   when (isNothing s3') $ error "S3 environment var must be set to bucket name"
@@ -41,7 +41,7 @@ main = withStderrLogging $ Sess.withSession $ \sess -> do
           Just url ->
             \sha -> void $ Sess.get sess (T.unpack $ url <> "/" <> (unSHA224 sha) <> "/reindex")
 
-  let s3store = S3.S3Store (BucketName s3)
+  let s3store = S3.S3Store s3
   s3refs' <- S3.getAllBlobRefs s3store
   let s3refs = Set.fromList s3refs'
   let dirstore = Directory.FileStore pth
